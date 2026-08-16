@@ -15,7 +15,7 @@ Visão consolidada da Fase 0 (decisões de arquitetura) e do que foi de fato imp
 | Notificações | sonner |
 | Hospedagem (planejada) | Vercel |
 | Imagens | Supabase Storage (transicional — ver [products.md](products.md); troca para ImageKit é isolada via interface `ImageProvider`) |
-| PDV offline (a partir da Fase 5) | IndexedDB |
+| PDV offline | IndexedDB (via `idb`) — ver [offline.md](offline.md) |
 
 ## Por que Server Actions em vez de backend separado
 
@@ -43,6 +43,7 @@ src/
 │   ├── plans/                     # guard de feature flags e limites por plano
 │   ├── image/                     # compressão de imagem no navegador
 │   ├── providers/                 # ImageProvider (adapter — hoje Supabase Storage)
+│   ├── offline/                   # IndexedDB, fila, sync engine, indicador de conexão
 │   └── validations/                # schemas Zod
 │
 ├── types/database.ts              # tipos espelhando o schema do Supabase
@@ -59,7 +60,7 @@ Ver o documento de Fase 0 (arquitetura completa, publicado como artifact) para o
 - ✅ **Fase 2** — Produtos: marcas, categorias, variações (cor×tamanho), fornecedores, upload com compressão (Supabase Storage transicional)
 - ✅ **Fase 3** — Estoque: saldo por variação, movimentações (entrada/ajuste/contagem), estoque mínimo com alerta, histórico
 - ✅ **Fase 4** — PDV: caixa, venda com múltiplos pagamentos, desconto, cliente/vendedor, sangria/suprimento (trocas/devoluções ficam para fase própria)
-- ⬜ **Fase 5** — Offline (IndexedDB, sync, conflitos)
+- ✅ **Fase 5** — Offline: venda e caixa funcionam sem conexão, idempotência real, conflitos de estoque nunca resolvidos silenciosamente
 - ⬜ **Fase 6** — Fechamento do plano Básico
 - ⬜ **Fase 7** — E-commerce
 - ⬜ **Fase 8** — WhatsApp (Evolution API)
@@ -69,3 +70,7 @@ Ver o documento de Fase 0 (arquitetura completa, publicado como artifact) para o
 - ⬜ **Fase 12** — IA Premium (cadastro de produto por WhatsApp)
 
 Nenhuma fase avança sem comando explícito do usuário.
+
+## Nota: extensão de escopo pendente (ERP completo)
+
+O usuário estendeu o escopo original (SaaS PDV+estoque) para um ERP vertical completo para varejo de calçados — compras, financeiro, fiscal (NF-e/NFC-e), e-commerce, marketplaces, logística, CRM avançado, API pública, decisão de priorizar facilidade de uso sobre quantidade de funcionalidades e arquitetura correta sobre velocidade. Decisão tomada: terminar a Fase 5 (já em andamento) normalmente, e só depois redesenhar o roadmap completo incorporando esse escopo — não decidido ainda como as fases 6-12 se reorganizam.

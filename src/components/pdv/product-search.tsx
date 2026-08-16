@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { searchCatalog } from '@/lib/offline/db';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 
@@ -21,7 +22,13 @@ function formatPrice(cents: number) {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-export function ProductSearch({ onSelect }: { onSelect: (variant: SearchResultVariant) => void }) {
+export function ProductSearch({
+  onSelect,
+  isOnline,
+}: {
+  onSelect: (variant: SearchResultVariant) => void;
+  isOnline: boolean;
+}) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResultVariant[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +41,14 @@ export function ProductSearch({ onSelect }: { onSelect: (variant: SearchResultVa
 
     const timeout = setTimeout(async () => {
       setIsLoading(true);
+
+      if (!isOnline) {
+        const cached = await searchCatalog(query);
+        setResults(cached);
+        setIsLoading(false);
+        return;
+      }
+
       const supabase = createClient();
       const { data } = await supabase
         .from('product_variants')
@@ -95,7 +110,7 @@ export function ProductSearch({ onSelect }: { onSelect: (variant: SearchResultVa
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [query]);
+  }, [query, isOnline]);
 
   return (
     <div className="space-y-2">

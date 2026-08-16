@@ -1,14 +1,18 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { ProductSearch, type SearchResultVariant } from './product-search';
 import { CheckoutDialog } from './checkout-dialog';
 import { CashRegisterHeader } from './cash-register-header';
+import { ConnectionIndicator } from './connection-indicator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useConnectionStatus } from '@/lib/offline/use-connection-status';
+import { replaceCatalog, decrementLocalStock, type CachedVariant } from '@/lib/offline/db';
 import type { CashRegister, Customer, Seller } from '@/types/database';
 
 export interface CartItem {
@@ -29,15 +33,25 @@ export function PdvClient({
   cashRegister,
   customers,
   sellers,
+  catalog,
 }: {
   cashRegister: CashRegister;
   customers: Pick<Customer, 'id' | 'full_name'>[];
   sellers: Pick<Seller, 'id' | 'full_name'>[];
+  catalog: CachedVariant[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const { status, queueLength, refreshQueueLength } = useConnectionStatus();
+
+  // Sempre que o catálogo do servidor chega fresco (online), atualiza o
+  // cache local — é isso que permite o PDV continuar funcionando quando
+  // a conexão cai no meio do expediente.
+  useEffect(() => {
+    replaceCatalog(catalog).catch(() => {});
+  }, [catalog]);
 
   function addToCart(variant: SearchResultVariant) {
     setCart((prev) => {
@@ -91,19 +105,35 @@ export function PdvClient({
     [cart]
   );
 
-  function handleSaleComplete() {
+  async function handleSaleComplete(soldItems: CartItem[]) {
+    // Decrementa o cache local para a busca offline seguinte já refletir
+    // o estoque vendido, mesmo sem ter voltado a falar com o servidor.
+    for (const item of soldItems) {
+      await decrementLocalStock(item.variantId, item.quantity);
+    }
     setCart([]);
     setCheckoutOpen(false);
-    startTransition(() => router.refresh());
+    await refreshQueueLength();
+    // Offline, não há nada novo a buscar do servidor — refresh só faz
+    // sentido (e só funciona) com conexão.
+    if (navigator.onLine) {
+      startTransition(() => router.refresh());
+    }
   }
 
   return (
     <div className="space-y-6">
-      <CashRegisterHeader cashRegister={cashRegister} />
+      <div className="flex items-center justify-between">
+        <ConnectionIndicator status={status} queueLength={queueLength} />
+        <Link href="/dashboard/pdv/conflitos" className="text-sm text-muted-foreground underline underline-offset-4">
+          Pendências de sincronização
+        </Link>
+      </div>
+      <CashRegisterHeader cashRegister={cashRegister} isOnline={status !== 'offline'} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <div className="space-y-4">
-          <ProductSearch onSelect={addToCart} />
+          <ProductSearch onSelect={addToCart} isOnline={status !== 'offline'} />
         </div>
 
         <Card>
@@ -181,6 +211,7 @@ export function PdvClient({
         subtotalCents={subtotalCents}
         customers={customers}
         sellers={sellers}
+        isOnline={status !== 'offline'}
         onComplete={handleSaleComplete}
       />
     </div>

@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { createSale } from '@/app/dashboard/pdv/actions';
+import { enqueueOperation } from '@/lib/offline/db';
 import type { CartItem } from './pdv-client';
 import type { Customer, PaymentMethod, Seller } from '@/types/database';
 
@@ -53,6 +54,7 @@ export function CheckoutDialog({
   subtotalCents,
   customers,
   sellers,
+  isOnline,
   onComplete,
 }: {
   open: boolean;
@@ -62,7 +64,8 @@ export function CheckoutDialog({
   subtotalCents: number;
   customers: Pick<Customer, 'id' | 'full_name'>[];
   sellers: Pick<Seller, 'id' | 'full_name'>[];
-  onComplete: () => void;
+  isOnline: boolean;
+  onComplete: (soldItems: CartItem[]) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [discount, setDiscount] = useState('');
@@ -110,15 +113,40 @@ export function CheckoutDialog({
       return;
     }
 
+    const items = cart.map((item) => ({
+      variantId: item.variantId,
+      quantity: item.quantity,
+      unitPriceCents: item.unitPriceCents,
+    }));
+    const payments = paymentEntries.map((p) => ({ method: p.method, amountCents: inputToCents(p.amount) }));
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueueOperation({
+          clientOperationId: crypto.randomUUID(),
+          type: 'SALE_CREATED',
+          createdAt: new Date().toISOString(),
+          payload: {
+            cashRegisterId,
+            items,
+            payments,
+            discountCents,
+            customerId: customerId || null,
+            sellerId: sellerId || null,
+          },
+        });
+        toast.success('Venda registrada offline — será sincronizada quando a conexão voltar.');
+        reset();
+        onComplete(cart);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const result = await createSale({
         cashRegisterId,
-        items: cart.map((item) => ({
-          variantId: item.variantId,
-          quantity: item.quantity,
-          unitPriceCents: item.unitPriceCents,
-        })),
-        payments: paymentEntries.map((p) => ({ method: p.method, amountCents: inputToCents(p.amount) })),
+        items,
+        payments,
         discountCents,
         customerId: customerId || null,
         sellerId: sellerId || null,
@@ -131,7 +159,7 @@ export function CheckoutDialog({
 
       toast.success('Venda registrada.');
       reset();
-      onComplete();
+      onComplete(cart);
     });
   }
 

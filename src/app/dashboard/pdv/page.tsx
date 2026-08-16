@@ -25,7 +25,7 @@ export default async function PdvPage() {
     );
   }
 
-  const [{ data: customers }, { data: sellers }] = await Promise.all([
+  const [{ data: customers }, { data: sellers }, { data: catalogVariants }] = await Promise.all([
     supabase
       .from('customers')
       .select('id, full_name')
@@ -39,13 +39,42 @@ export default async function PdvPage() {
       .eq('is_active', true)
       .order('full_name')
       .returns<Pick<Seller, 'id' | 'full_name'>[]>(),
+    supabase
+      .from('product_variants')
+      .select('id, color, size, sku, barcode, price_cents, product:products(name), inventory(quantity)')
+      .eq('tenant_id', user.tenant_id)
+      .eq('is_active', true)
+      .returns<
+        {
+          id: string;
+          color: string;
+          size: string;
+          sku: string | null;
+          barcode: string | null;
+          price_cents: number;
+          product: { name: string } | null;
+          inventory: { quantity: number } | null;
+        }[]
+      >(),
   ]);
+
+  const catalog = (catalogVariants ?? []).map((v) => ({
+    id: v.id,
+    color: v.color,
+    size: v.size,
+    sku: v.sku,
+    barcode: v.barcode,
+    price_cents: v.price_cents,
+    product_name: v.product?.name ?? '—',
+    available_quantity: v.inventory?.quantity ?? 0,
+  }));
 
   return (
     <PdvClient
       cashRegister={openRegister}
       customers={customers ?? []}
       sellers={sellers ?? []}
+      catalog={catalog}
     />
   );
 }

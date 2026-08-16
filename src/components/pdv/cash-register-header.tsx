@@ -15,7 +15,13 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-export function CashRegisterHeader({ cashRegister }: { cashRegister: CashRegister }) {
+export function CashRegisterHeader({
+  cashRegister,
+  isOnline,
+}: {
+  cashRegister: CashRegister;
+  isOnline: boolean;
+}) {
   const [movementDialog, setMovementDialog] = useState<'withdrawal' | 'reinforcement' | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
 
@@ -34,7 +40,13 @@ export function CashRegisterHeader({ cashRegister }: { cashRegister: CashRegiste
         <Button variant="outline" size="sm" onClick={() => setMovementDialog('withdrawal')}>
           Sangria
         </Button>
-        <Button variant="destructive" size="sm" onClick={() => setCloseDialogOpen(true)}>
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={!isOnline}
+          title={!isOnline ? 'Fechar caixa exige conexão com a internet.' : undefined}
+          onClick={() => setCloseDialogOpen(true)}
+        >
           Fechar caixa
         </Button>
       </div>
@@ -42,6 +54,7 @@ export function CashRegisterHeader({ cashRegister }: { cashRegister: CashRegiste
       <CashMovementDialog
         cashRegisterId={cashRegister.id}
         type={movementDialog}
+        isOnline={isOnline}
         onOpenChange={(open) => !open && setMovementDialog(null)}
       />
       <CloseRegisterDialog

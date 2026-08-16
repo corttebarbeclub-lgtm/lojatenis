@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { registerCashMovement } from '@/app/dashboard/pdv/actions';
+import { enqueueOperation } from '@/lib/offline/db';
 
 function inputToCents(value: string) {
   const n = Number(value.replace(',', '.'));
@@ -30,10 +31,12 @@ const LABELS = {
 export function CashMovementDialog({
   cashRegisterId,
   type,
+  isOnline,
   onOpenChange,
 }: {
   cashRegisterId: string;
   type: 'withdrawal' | 'reinforcement' | null;
+  isOnline: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
@@ -46,6 +49,22 @@ export function CashMovementDialog({
     const cents = inputToCents(amount);
     if (cents <= 0) {
       toast.error('Informe um valor maior que zero.');
+      return;
+    }
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueueOperation({
+          clientOperationId: crypto.randomUUID(),
+          type: 'CASH_MOVEMENT_CREATED',
+          createdAt: new Date().toISOString(),
+          payload: { cashRegisterId, type, amountCents: cents, reason: reason || null },
+        });
+        toast.success(`${LABELS[type].title} registrada offline — será sincronizada quando a conexão voltar.`);
+        setAmount('');
+        setReason('');
+        onOpenChange(false);
+      });
       return;
     }
 

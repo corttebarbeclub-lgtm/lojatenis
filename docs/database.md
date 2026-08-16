@@ -44,6 +44,14 @@ Ver [inventory.md](inventory.md) para o fluxo de movimentação e um achado real
 
 Ver [pdv.md](pdv.md) para o fluxo de venda, cálculo de saldo esperado no fechamento e os testes de isolamento entre tenants.
 
+## Tabelas (Fase 5)
+
+| Tabela | Descrição |
+|---|---|
+| `sync_conflicts` | Operações offline (venda ou movimentação de caixa) que não puderam ser aplicadas na sincronização — nunca resolvidas silenciosamente. `unique (tenant_id, client_operation_id)` garante idempotência. |
+
+`sales` e `cash_movements` ganharam a coluna `client_operation_id uuid`, com `unique index (tenant_id, client_operation_id) where client_operation_id is not null` — é essa constraint que garante que uma venda offline reenviada por retry nunca duplica. Ver [offline.md](offline.md).
+
 ## Migrations aplicadas
 
 - `001_foundation.sql` — schema da Fase 1 + RLS + função `auth_tenant_id()`.
@@ -56,6 +64,9 @@ Ver [pdv.md](pdv.md) para o fluxo de venda, cálculo de saldo esperado no fecham
 - `008_sale_movement_type.sql` — adiciona `'sale'` ao enum `inventory_movement_type` (migration separada porque `ALTER TYPE ADD VALUE` não pode rodar na mesma transação em que o valor é referenciado).
 - `009_pdv.sql` — schema de PDV da Fase 4 acima + triggers de consistência (`store_id`, `cash_register_id`, `sale_id`) + RLS.
 - `010_pdv_functions.sql` — funções `open_cash_register`/`close_cash_register`/`register_cash_movement`/`create_sale`.
+- `011_offline_sync.sql` — `client_operation_id` em `sales`/`cash_movements` + tabela `sync_conflicts` + `create_sale`/`register_cash_movement` atualizadas com idempotência.
+- `012_sync_conflicts_insert_policy.sql` — corrige policy de `insert` faltante em `sync_conflicts` (bug real: RLS sem policy de insert negava a escrita silenciosamente).
+- `013_sync_conflicts_idempotency.sql` — `unique index` em `sync_conflicts(tenant_id, client_operation_id)` (bug real: heartbeat de sync + evento `online` quase simultâneos podiam duplicar o registro de conflito).
 
 Aplicadas via Supabase Management API (`POST /v1/projects/{ref}/database/query`), registradas em `supabase_migrations.schema_migrations`.
 

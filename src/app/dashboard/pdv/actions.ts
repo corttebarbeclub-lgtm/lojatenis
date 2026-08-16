@@ -87,15 +87,33 @@ export async function registerCashMovement(input: RegisterCashMovementInput) {
 
   const user = await requireAppUser();
   const supabase = createClient(cookies());
+  const { clientOperationId } = parsed.data;
 
   const { data, error } = await supabase.rpc('register_cash_movement', {
     p_cash_register_id: parsed.data.cashRegisterId,
     p_type: parsed.data.type,
     p_amount_cents: parsed.data.amountCents,
     p_reason: parsed.data.reason || null,
+    p_client_operation_id: clientOperationId || null,
   });
 
   if (error) {
+    // Veio de uma sincronização offline (fila) e falhou por regra de
+    // negócio, não por validação — nunca descarta silenciosamente:
+    // registra como conflito para o gestor decidir.
+    if (clientOperationId) {
+      const { error: conflictError } = await supabase.from('sync_conflicts').insert({
+        tenant_id: user.tenant_id,
+        client_operation_id: clientOperationId,
+        operation_type: 'cash_movement',
+        payload: parsed.data,
+        error_message: error.message,
+      });
+      if (conflictError && conflictError.code !== '23505') {
+        throw new Error(`Falha ao registrar conflito de sincronização: ${conflictError.message}`);
+      }
+      return { error: 'Movimentação registrada como pendência de sincronização.', conflict: true };
+    }
     return { error: 'Não foi possível registrar a movimentação de caixa.' };
   }
 
@@ -118,7 +136,7 @@ export async function createSale(input: CreateSaleInput) {
 
   const user = await requireAppUser();
   const supabase = createClient(cookies());
-  const { cashRegisterId, items, payments, discountCents, customerId, sellerId } = parsed.data;
+  const { cashRegisterId, items, payments, discountCents, customerId, sellerId, clientOperationId } = parsed.data;
 
   const { data, error } = await supabase.rpc('create_sale', {
     p_cash_register_id: cashRegisterId,
@@ -131,9 +149,31 @@ export async function createSale(input: CreateSaleInput) {
     p_discount_cents: discountCents,
     p_customer_id: customerId || null,
     p_seller_id: sellerId || null,
+    p_client_operation_id: clientOperationId || null,
   });
 
   if (error) {
+    // Sincronização offline: uma venda feita sem conexão pode chegar ao
+    // servidor depois que o estoque real já mudou (outro caixa vendeu o
+    // mesmo item). Nunca descarta a venda nem força — vira um conflito
+    // visível para o gestor resolver, o operador do caixa nem percebe.
+    if (clientOperationId) {
+      const { error: conflictError } = await supabase.from('sync_conflicts').insert({
+        tenant_id: user.tenant_id,
+        client_operation_id: clientOperationId,
+        operation_type: 'sale',
+        payload: parsed.data,
+        error_message: error.message,
+      });
+      // 23505 = já existe um conflito com esse client_operation_id (a
+      // mesma sincronização rodou em paralelo/retry) — idempotente, não é
+      // erro. Qualquer outro erro no insert do conflito é grave o
+      // suficiente para não silenciar.
+      if (conflictError && conflictError.code !== '23505') {
+        throw new Error(`Falha ao registrar conflito de sincronização: ${conflictError.message}`);
+      }
+      return { error: 'Venda registrada como pendência de sincronização.', conflict: true };
+    }
     if (error.message.includes('estoque negativo')) {
       return { error: 'Um dos itens não tem estoque suficiente.' };
     }

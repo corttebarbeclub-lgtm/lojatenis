@@ -37,4 +37,6 @@ SUPABASE_SERVICE_ROLE_KEY
 
 **Fase 4 — PDV** concluída: abertura/fechamento de caixa, venda com carrinho e múltiplos pagamentos, desconto, cliente/vendedor, sangria e suprimento. Ver [docs/pdv.md](docs/pdv.md).
 
+**Fase 5 — Offline-first** concluída: venda e sangria/suprimento funcionam sem conexão (IndexedDB + fila), sincronização automática ao voltar online, idempotência real via `client_operation_id`, conflitos de estoque nunca resolvidos silenciosamente. Ver [docs/offline.md](docs/offline.md).
+
 Ver [docs/architecture.md](docs/architecture.md) para o roadmap completo das próximas fases.

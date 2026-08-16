@@ -17,6 +17,7 @@ export const registerCashMovementSchema = z.object({
   type: cashMovementTypeSchema,
   amountCents: z.number().int().min(1, 'Informe um valor maior que zero'),
   reason: z.string().optional(),
+  clientOperationId: z.string().uuid().optional(),
 });
 
 export const paymentMethodSchema = z.enum(['cash', 'pix', 'card']);
@@ -39,6 +40,7 @@ export const createSaleSchema = z.object({
   discountCents: z.number().int().min(0).default(0),
   customerId: z.string().uuid().optional().nullable(),
   sellerId: z.string().uuid().optional().nullable(),
+  clientOperationId: z.string().uuid().optional(),
 });
 
 export const customerSchema = z.object({

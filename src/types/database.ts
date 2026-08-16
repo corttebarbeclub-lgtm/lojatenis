@@ -263,6 +263,22 @@ export interface Payment {
   created_at: string;
 }
 
+export type SyncConflictStatus = 'pending' | 'resolved';
+
+export interface SyncConflict {
+  id: string;
+  tenant_id: string;
+  client_operation_id: string;
+  operation_type: string;
+  payload: Record<string, unknown>;
+  error_message: string;
+  status: SyncConflictStatus;
+  resolved_by: string | null;
+  resolution_note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
 export interface AuditLog {
   id: string;
   tenant_id: string;
