@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lojatenis
 
-## Getting Started
+SaaS multi-tenant para lojas de calçados: PDV, estoque, site, WhatsApp e IA.
 
-First, run the development server:
+Projeto em desenvolvimento por fases — ver [docs/architecture.md](docs/architecture.md) para a visão completa e o roadmap.
+
+## Stack
+
+Next.js 14.2 (App Router, TypeScript strict) · Tailwind CSS + shadcn/ui (tema `neutral`) · Supabase (Postgres + Auth + RLS) · Zod · react-hook-form · sonner
+
+## Comandos
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev      # dev em localhost:3000
+npm run build    # build de produção (rodar sempre antes de commitar)
+npm run lint     # ESLint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Variáveis de ambiente
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copie `.env.example` para `.env.local` e preencha com as credenciais do projeto Supabase:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+NEXT_PUBLIC_SITE_URL
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+```
 
-## Learn More
+## Status
 
-To learn more about Next.js, take a look at the following resources:
+**Fase 1 — Fundação** concluída: autenticação (email/senha), estrutura multi-tenant, RLS, papéis de usuário (RBAC), planos/feature flags e dashboard inicial.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ver [docs/architecture.md](docs/architecture.md) para o roadmap completo das próximas fases.
