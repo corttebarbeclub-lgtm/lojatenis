@@ -154,6 +154,29 @@ export interface ProductWithRelations extends Product {
   images: ProductImage[];
 }
 
+export type InventoryMovementType = 'entry' | 'adjustment' | 'count';
+
+export interface Inventory {
+  id: string;
+  tenant_id: string;
+  variant_id: string;
+  quantity: number;
+  min_quantity: number;
+  updated_at: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  tenant_id: string;
+  variant_id: string;
+  type: InventoryMovementType;
+  quantity_change: number;
+  quantity_after: number;
+  reason: string | null;
+  user_id: string | null;
+  created_at: string;
+}
+
 export interface AuditLog {
   id: string;
   tenant_id: string;

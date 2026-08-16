@@ -24,6 +24,15 @@ Projeto Supabase: `lojatenis` (ref `jmlxhsqfvxjggvqusleu`, região `sa-east-1`).
 
 Ver [products.md](products.md) para detalhes de imagem e o achado de segurança do trigger de consistência.
 
+## Tabelas (Fase 3)
+
+| Tabela | Descrição |
+|---|---|
+| `inventory` | Saldo atual e mínimo por variante, `unique(variant_id)`. Nunca escrita diretamente — só via `register_inventory_movement`/`set_min_quantity`. |
+| `inventory_movements` | Histórico append-only: tipo (`entry`/`adjustment`/`count`), delta aplicado, saldo resultante, motivo, usuário. |
+
+Ver [inventory.md](inventory.md) para o fluxo de movimentação e um achado real de mapeamento PostgREST (relação 1:1 via `unique` retorna objeto, não array).
+
 ## Migrations aplicadas
 
 - `001_foundation.sql` — schema da Fase 1 + RLS + função `auth_tenant_id()`.
@@ -32,6 +41,7 @@ Ver [products.md](products.md) para detalhes de imagem e o achado de segurança 
 - `004_products.sql` — schema de produtos da Fase 2 acima + RLS.
 - `005_storage_policies.sql` — policies do bucket `product-images` (leitura pública, escrita/exclusão por tenant).
 - `006_tenant_consistency_guard.sql` — trigger que impede `product_variants`/`product_images` de referenciar produto de outro tenant (RLS sozinho não cobre esse caso).
+- `007_inventory.sql` — schema de estoque da Fase 3 acima + funções `register_inventory_movement`/`set_min_quantity` + trigger de consistência reaproveitado contra `product_variants`.
 
 Aplicadas via Supabase Management API (`POST /v1/projects/{ref}/database/query`), registradas em `supabase_migrations.schema_migrations`.
 

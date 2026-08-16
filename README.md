@@ -33,4 +33,6 @@ SUPABASE_SERVICE_ROLE_KEY
 
 **Fase 2 — Produtos** concluída: marcas, categorias, fornecedores, produtos com variações (cor×tamanho), upload de imagem com compressão no navegador. Ver [docs/products.md](docs/products.md).
 
+**Fase 3 — Estoque** concluída: saldo por variação, movimentações (entrada/ajuste/contagem), estoque mínimo com alerta, histórico completo. Ver [docs/inventory.md](docs/inventory.md).
+
 Ver [docs/architecture.md](docs/architecture.md) para o roadmap completo das próximas fases.
