@@ -35,4 +35,6 @@ SUPABASE_SERVICE_ROLE_KEY
 
 **Fase 3 — Estoque** concluída: saldo por variação, movimentações (entrada/ajuste/contagem), estoque mínimo com alerta, histórico completo. Ver [docs/inventory.md](docs/inventory.md).
 
+**Fase 4 — PDV** concluída: abertura/fechamento de caixa, venda com carrinho e múltiplos pagamentos, desconto, cliente/vendedor, sangria e suprimento. Ver [docs/pdv.md](docs/pdv.md).
+
 Ver [docs/architecture.md](docs/architecture.md) para o roadmap completo das próximas fases.

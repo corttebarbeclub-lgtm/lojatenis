@@ -154,7 +154,7 @@ export interface ProductWithRelations extends Product {
   images: ProductImage[];
 }
 
-export type InventoryMovementType = 'entry' | 'adjustment' | 'count';
+export type InventoryMovementType = 'entry' | 'adjustment' | 'count' | 'sale';
 
 export interface Inventory {
   id: string;
@@ -174,6 +174,92 @@ export interface InventoryMovement {
   quantity_after: number;
   reason: string | null;
   user_id: string | null;
+  created_at: string;
+}
+
+export interface Customer {
+  id: string;
+  tenant_id: string;
+  full_name: string;
+  cpf: string | null;
+  phone: string | null;
+  email: string | null;
+  created_at: string;
+}
+
+export interface Seller {
+  id: string;
+  tenant_id: string;
+  user_id: string | null;
+  full_name: string;
+  commission_percent: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type CashRegisterStatus = 'open' | 'closed';
+
+export interface CashRegister {
+  id: string;
+  tenant_id: string;
+  store_id: string;
+  opened_by: string | null;
+  closed_by: string | null;
+  status: CashRegisterStatus;
+  opening_balance_cents: number;
+  closing_balance_cents: number | null;
+  expected_balance_cents: number | null;
+  opened_at: string;
+  closed_at: string | null;
+}
+
+export type CashMovementType = 'withdrawal' | 'reinforcement';
+
+export interface CashMovement {
+  id: string;
+  tenant_id: string;
+  cash_register_id: string;
+  type: CashMovementType;
+  amount_cents: number;
+  reason: string | null;
+  user_id: string | null;
+  created_at: string;
+}
+
+export type SaleStatus = 'completed' | 'cancelled';
+export type PaymentMethod = 'cash' | 'pix' | 'card';
+
+export interface Sale {
+  id: string;
+  tenant_id: string;
+  store_id: string;
+  cash_register_id: string;
+  customer_id: string | null;
+  seller_id: string | null;
+  user_id: string | null;
+  status: SaleStatus;
+  subtotal_cents: number;
+  discount_cents: number;
+  total_cents: number;
+  created_at: string;
+}
+
+export interface SaleItem {
+  id: string;
+  tenant_id: string;
+  sale_id: string;
+  variant_id: string;
+  quantity: number;
+  unit_price_cents: number;
+  total_cents: number;
+}
+
+export interface Payment {
+  id: string;
+  tenant_id: string;
+  sale_id: string;
+  method: PaymentMethod;
+  amount_cents: number;
   created_at: string;
 }
 

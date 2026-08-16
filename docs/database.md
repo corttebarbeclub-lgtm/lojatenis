@@ -33,6 +33,17 @@ Ver [products.md](products.md) para detalhes de imagem e o achado de segurança 
 
 Ver [inventory.md](inventory.md) para o fluxo de movimentação e um achado real de mapeamento PostgREST (relação 1:1 via `unique` retorna objeto, não array).
 
+## Tabelas (Fase 4)
+
+| Tabela | Descrição |
+|---|---|
+| `customers`, `sellers` | Cadastro simples por tenant. `sellers` tem `commission_percent`. |
+| `cash_registers` | Sessão de caixa por loja — só uma aberta por vez (`unique index ... where status = 'open'`). |
+| `cash_movements` | Sangria (`withdrawal`) e suprimento (`reinforcement`), presos a uma sessão de caixa. |
+| `sales` / `sale_items` / `payments` | Venda, itens e pagamentos (múltiplos por venda). Toda escrita via `create_sale`, nunca INSERT direto. |
+
+Ver [pdv.md](pdv.md) para o fluxo de venda, cálculo de saldo esperado no fechamento e os testes de isolamento entre tenants.
+
 ## Migrations aplicadas
 
 - `001_foundation.sql` — schema da Fase 1 + RLS + função `auth_tenant_id()`.
@@ -42,6 +53,9 @@ Ver [inventory.md](inventory.md) para o fluxo de movimentação e um achado real
 - `005_storage_policies.sql` — policies do bucket `product-images` (leitura pública, escrita/exclusão por tenant).
 - `006_tenant_consistency_guard.sql` — trigger que impede `product_variants`/`product_images` de referenciar produto de outro tenant (RLS sozinho não cobre esse caso).
 - `007_inventory.sql` — schema de estoque da Fase 3 acima + funções `register_inventory_movement`/`set_min_quantity` + trigger de consistência reaproveitado contra `product_variants`.
+- `008_sale_movement_type.sql` — adiciona `'sale'` ao enum `inventory_movement_type` (migration separada porque `ALTER TYPE ADD VALUE` não pode rodar na mesma transação em que o valor é referenciado).
+- `009_pdv.sql` — schema de PDV da Fase 4 acima + triggers de consistência (`store_id`, `cash_register_id`, `sale_id`) + RLS.
+- `010_pdv_functions.sql` — funções `open_cash_register`/`close_cash_register`/`register_cash_movement`/`create_sale`.
 
 Aplicadas via Supabase Management API (`POST /v1/projects/{ref}/database/query`), registradas em `supabase_migrations.schema_migrations`.
 

@@ -18,7 +18,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { registerMovement, setMinQuantity } from '@/app/dashboard/estoque/actions';
-import type { InventoryMovementType } from '@/types/database';
+
+// A UI de estoque manual não oferece o tipo "sale" — baixa por venda só
+// acontece via create_sale (Fase 4), nunca digitada manualmente aqui.
+type ManualMovementType = 'entry' | 'adjustment' | 'count';
 
 export function MovementDialog({
   variantId,
@@ -40,7 +43,7 @@ export function MovementDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [tab, setTab] = useState<InventoryMovementType | 'min'>('entry');
+  const [tab, setTab] = useState<ManualMovementType | 'min'>('entry');
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [minValue, setMinValue] = useState(String(currentMinQuantity));
@@ -89,7 +92,7 @@ export function MovementDialog({
     startTransition(async () => {
       const result = await registerMovement({
         variantId,
-        type: tab as InventoryMovementType,
+        type: tab as ManualMovementType,
         quantity: tab === 'adjustment' ? adjustmentSign * parsedAmount : parsedAmount,
         reason: reason || undefined,
       });

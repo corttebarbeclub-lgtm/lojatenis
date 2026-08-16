@@ -35,6 +35,7 @@ src/
 │   ├── dashboard/                 # shell da área logada (sidebar, header)
 │   ├── products/                  # formulário de produto, upload de imagem
 │   ├── inventory/                 # dialog de movimentação de estoque
+│   ├── pdv/                       # busca, carrinho, checkout, caixa
 │   └── ui/                        # shadcn/ui
 │
 ├── lib/
@@ -57,7 +58,7 @@ Ver o documento de Fase 0 (arquitetura completa, publicado como artifact) para o
 - ✅ **Fase 1** — Fundação: projeto, auth, tenant, usuários, permissões, layout, dashboard inicial
 - ✅ **Fase 2** — Produtos: marcas, categorias, variações (cor×tamanho), fornecedores, upload com compressão (Supabase Storage transicional)
 - ✅ **Fase 3** — Estoque: saldo por variação, movimentações (entrada/ajuste/contagem), estoque mínimo com alerta, histórico
-- ⬜ **Fase 4** — PDV
+- ✅ **Fase 4** — PDV: caixa, venda com múltiplos pagamentos, desconto, cliente/vendedor, sangria/suprimento (trocas/devoluções ficam para fase própria)
 - ⬜ **Fase 5** — Offline (IndexedDB, sync, conflitos)
 - ⬜ **Fase 6** — Fechamento do plano Básico
 - ⬜ **Fase 7** — E-commerce
