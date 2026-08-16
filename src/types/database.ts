@@ -75,6 +75,85 @@ export interface AppUser {
   created_at: string;
 }
 
+export type ProductGender = 'masculino' | 'feminino' | 'unissex' | 'infantil';
+
+export interface Brand {
+  id: string;
+  tenant_id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface Category {
+  id: string;
+  tenant_id: string;
+  name: string;
+  parent_id: string | null;
+  created_at: string;
+}
+
+export interface Supplier {
+  id: string;
+  tenant_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  created_at: string;
+}
+
+export interface Product {
+  id: string;
+  tenant_id: string;
+  name: string;
+  brand_id: string | null;
+  category_id: string | null;
+  supplier_id: string | null;
+  gender: ProductGender | null;
+  reference: string | null;
+  description: string | null;
+  ncm: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  tenant_id: string;
+  product_id: string;
+  color: string;
+  size: string;
+  sku: string | null;
+  barcode: string | null;
+  cost_cents: number | null;
+  price_cents: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ProductImage {
+  id: string;
+  tenant_id: string;
+  product_id: string;
+  storage_path: string;
+  url: string;
+  position: number;
+  is_primary: boolean;
+  width: number | null;
+  height: number | null;
+  size_bytes: number | null;
+  format: string | null;
+  created_at: string;
+}
+
+export interface ProductWithRelations extends Product {
+  brand: Brand | null;
+  category: Category | null;
+  supplier: Supplier | null;
+  variants: ProductVariant[];
+  images: ProductImage[];
+}
+
 export interface AuditLog {
   id: string;
   tenant_id: string;

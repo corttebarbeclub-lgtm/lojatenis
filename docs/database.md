@@ -13,10 +13,25 @@ Projeto Supabase: `lojatenis` (ref `jmlxhsqfvxjggvqusleu`, região `sa-east-1`).
 | `users` | Espelha `auth.users` (mesmo `id`, FK `on delete cascade`). Carrega `tenant_id`, `store_id`, `role`. |
 | `audit_logs` | Trilha de auditoria por tenant: ação, entidade, metadata livre em `jsonb`. |
 
+## Tabelas (Fase 2)
+
+| Tabela | Descrição |
+|---|---|
+| `brands`, `categories`, `suppliers` | Entidades simples por tenant, `unique (tenant_id, name)`. Criáveis inline no formulário de produto. |
+| `products` | Dados comuns ao modelo (nome, marca, categoria, fornecedor, gênero, referência, NCM). |
+| `product_variants` | Cada combinação vendável de cor+tamanho: SKU, código de barras, custo, preço. `unique (product_id, color, size)`. |
+| `product_images` | Fotos do produto: `storage_path`, `url`, posição, `is_primary`, dimensões e tamanho pós-compressão. |
+
+Ver [products.md](products.md) para detalhes de imagem e o achado de segurança do trigger de consistência.
+
 ## Migrations aplicadas
 
-- `001_foundation.sql` — schema completo acima + RLS + função `auth_tenant_id()`.
+- `001_foundation.sql` — schema da Fase 1 + RLS + função `auth_tenant_id()`.
 - `002_signup_bootstrap.sql` — função `create_tenant_for_new_user(p_tenant_name, p_store_name, p_full_name)`.
+- `003_updated_at_trigger.sql` — função genérica `set_updated_at()`.
+- `004_products.sql` — schema de produtos da Fase 2 acima + RLS.
+- `005_storage_policies.sql` — policies do bucket `product-images` (leitura pública, escrita/exclusão por tenant).
+- `006_tenant_consistency_guard.sql` — trigger que impede `product_variants`/`product_images` de referenciar produto de outro tenant (RLS sozinho não cobre esse caso).
 
 Aplicadas via Supabase Management API (`POST /v1/projects/{ref}/database/query`), registradas em `supabase_migrations.schema_migrations`.
 

@@ -14,7 +14,7 @@ Visão consolidada da Fase 0 (decisões de arquitetura) e do que foi de fato imp
 | Formulários | react-hook-form |
 | Notificações | sonner |
 | Hospedagem (planejada) | Vercel |
-| Imagens (a partir da Fase 2) | ImageKit |
+| Imagens | Supabase Storage (transicional — ver [products.md](products.md); troca para ImageKit é isolada via interface `ImageProvider`) |
 | PDV offline (a partir da Fase 5) | IndexedDB |
 
 ## Por que Server Actions em vez de backend separado
@@ -33,11 +33,14 @@ src/
 │
 ├── components/
 │   ├── dashboard/                 # shell da área logada (sidebar, header)
+│   ├── products/                  # formulário de produto, upload de imagem
 │   └── ui/                        # shadcn/ui
 │
 ├── lib/
 │   ├── tenant/                    # resolução do usuário/tenant autenticado
 │   ├── plans/                     # guard de feature flags e limites por plano
+│   ├── image/                     # compressão de imagem no navegador
+│   ├── providers/                 # ImageProvider (adapter — hoje Supabase Storage)
 │   └── validations/                # schemas Zod
 │
 ├── types/database.ts              # tipos espelhando o schema do Supabase
@@ -51,7 +54,7 @@ Ver o documento de Fase 0 (arquitetura completa, publicado como artifact) para o
 
 - ✅ **Fase 0** — Análise e arquitetura
 - ✅ **Fase 1** — Fundação: projeto, auth, tenant, usuários, permissões, layout, dashboard inicial
-- ⬜ **Fase 2** — Produtos: marcas, categorias, variações (cor×tamanho), fornecedores, ImageKit
+- ✅ **Fase 2** — Produtos: marcas, categorias, variações (cor×tamanho), fornecedores, upload com compressão (Supabase Storage transicional)
 - ⬜ **Fase 3** — Estoque: movimentações, entradas, ajustes, inventário
 - ⬜ **Fase 4** — PDV
 - ⬜ **Fase 5** — Offline (IndexedDB, sync, conflitos)

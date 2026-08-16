@@ -31,4 +31,6 @@ SUPABASE_SERVICE_ROLE_KEY
 
 **Fase 1 — Fundação** concluída: autenticação (email/senha), estrutura multi-tenant, RLS, papéis de usuário (RBAC), planos/feature flags e dashboard inicial.
 
+**Fase 2 — Produtos** concluída: marcas, categorias, fornecedores, produtos com variações (cor×tamanho), upload de imagem com compressão no navegador. Ver [docs/products.md](docs/products.md).
+
 Ver [docs/architecture.md](docs/architecture.md) para o roadmap completo das próximas fases.

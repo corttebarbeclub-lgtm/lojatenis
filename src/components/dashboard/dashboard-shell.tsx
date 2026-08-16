@@ -27,7 +27,7 @@ import type { AppUser } from '@/types/database';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Visão geral', icon: LayoutDashboard, enabled: true },
-  { href: '/dashboard/produtos', label: 'Produtos', icon: Package, enabled: false },
+  { href: '/dashboard/produtos', label: 'Produtos', icon: Package, enabled: true },
   { href: '/dashboard/estoque', label: 'Estoque', icon: Boxes, enabled: false },
   { href: '/dashboard/pdv', label: 'PDV', icon: ShoppingCart, enabled: false },
   { href: '/dashboard/clientes', label: 'Clientes', icon: Users, enabled: false },
@@ -71,7 +71,10 @@ export function DashboardShell({
         <Separator />
         <nav className="flex-1 space-y-1 p-3">
           {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              item.href === '/dashboard'
+                ? pathname === item.href
+                : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link
