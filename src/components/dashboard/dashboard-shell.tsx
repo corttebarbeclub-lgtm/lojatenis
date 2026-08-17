@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Users,
   Settings,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/estoque', label: 'Estoque', icon: Boxes, enabled: true },
   { href: '/dashboard/pdv', label: 'PDV', icon: ShoppingCart, enabled: true },
   { href: '/dashboard/clientes', label: 'Clientes', icon: Users, enabled: true },
+  { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart3, enabled: true },
   { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings, enabled: false },
 ];
 

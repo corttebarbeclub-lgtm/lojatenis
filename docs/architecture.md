@@ -29,6 +29,7 @@ src/
 │   ├── (auth)/{login,signup}/     # rotas públicas de autenticação
 │   ├── auth/callback/route.ts     # troca code por sessão (Supabase Auth)
 │   ├── dashboard/                 # área logada, protegida pelo middleware
+│   ├── loja/[slug]/               # site público (vitrine, sem carrinho — anônimo)
 │   └── page.tsx                   # redireciona para /login ou /dashboard
 │
 ├── components/
@@ -36,6 +37,7 @@ src/
 │   ├── products/                  # formulário de produto, upload de imagem
 │   ├── inventory/                 # dialog de movimentação de estoque
 │   ├── pdv/                       # busca, carrinho, checkout, caixa
+│   ├── reports/                   # seletor de período dos relatórios
 │   └── ui/                        # shadcn/ui
 │
 ├── lib/
@@ -61,7 +63,7 @@ Ver o documento de Fase 0 (arquitetura completa, publicado como artifact) para o
 - ✅ **Fase 3** — Estoque: saldo por variação, movimentações (entrada/ajuste/contagem), estoque mínimo com alerta, histórico
 - ✅ **Fase 4** — PDV: caixa, venda com múltiplos pagamentos, desconto, cliente/vendedor, sangria/suprimento (trocas/devoluções ficam para fase própria)
 - ✅ **Fase 5** — Offline: venda e caixa funcionam sem conexão, idempotência real, conflitos de estoque nunca resolvidos silenciosamente
-- ⬜ **Fase 6** — Fechamento do plano Básico
+- ✅ **Fase 6** — Fechamento do plano Básico: dashboard com métricas reais, relatórios, histórico de cliente, site público de vitrine
 - ⬜ **Fase 7** — E-commerce
 - ⬜ **Fase 8** — WhatsApp (Evolution API)
 - ⬜ **Fase 9** — Fechamento do plano Profissional

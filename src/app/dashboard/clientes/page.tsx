@@ -62,8 +62,10 @@ export default async function ClientesPage() {
             </TableHeader>
             <TableBody>
               {list.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell className="font-medium">{customer.full_name}</TableCell>
+                <TableRow key={customer.id} className="cursor-pointer">
+                  <TableCell className="font-medium">
+                    <Link href={`/dashboard/clientes/${customer.id}`}>{customer.full_name}</Link>
+                  </TableCell>
                   <TableCell>{customer.cpf ?? '—'}</TableCell>
                   <TableCell>{customer.phone ?? '—'}</TableCell>
                   <TableCell>{customer.email ?? '—'}</TableCell>

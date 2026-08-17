@@ -52,6 +52,10 @@ Ver [pdv.md](pdv.md) para o fluxo de venda, cálculo de saldo esperado no fecham
 
 `sales` e `cash_movements` ganharam a coluna `client_operation_id uuid`, com `unique index (tenant_id, client_operation_id) where client_operation_id is not null` — é essa constraint que garante que uma venda offline reenviada por retry nunca duplica. Ver [offline.md](offline.md).
 
+## Fase 6 — sem tabelas novas
+
+Fecha o plano Básico com dashboard/relatórios/histórico de cliente (queries sobre tabelas já existentes) e site público. Três funções `security definer` novas expõem só os campos seguros de `products`/`product_variants` pra visitantes anônimos, sem policy `to anon` direta nas tabelas de domínio: `get_storefront_tenant`, `get_storefront_products`, `get_storefront_product_detail`. Mais três funções de agregação para relatórios: `report_top_products`, `report_payment_methods`, `report_sales_by_seller`. Ver [basic-plan.md](basic-plan.md).
+
 ## Migrations aplicadas
 
 - `001_foundation.sql` — schema da Fase 1 + RLS + função `auth_tenant_id()`.
@@ -67,6 +71,8 @@ Ver [pdv.md](pdv.md) para o fluxo de venda, cálculo de saldo esperado no fecham
 - `011_offline_sync.sql` — `client_operation_id` em `sales`/`cash_movements` + tabela `sync_conflicts` + `create_sale`/`register_cash_movement` atualizadas com idempotência.
 - `012_sync_conflicts_insert_policy.sql` — corrige policy de `insert` faltante em `sync_conflicts` (bug real: RLS sem policy de insert negava a escrita silenciosamente).
 - `013_sync_conflicts_idempotency.sql` — `unique index` em `sync_conflicts(tenant_id, client_operation_id)` (bug real: heartbeat de sync + evento `online` quase simultâneos podiam duplicar o registro de conflito).
+- `014_reports.sql` — funções `report_top_products`/`report_payment_methods`/`report_sales_by_seller`.
+- `015_public_storefront.sql` — funções `get_storefront_tenant`/`get_storefront_products`/`get_storefront_product_detail`, `security definer`, `grant execute` para `anon` e `authenticated`.
 
 Aplicadas via Supabase Management API (`POST /v1/projects/{ref}/database/query`), registradas em `supabase_migrations.schema_migrations`.
 

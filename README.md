@@ -39,4 +39,6 @@ SUPABASE_SERVICE_ROLE_KEY
 
 **Fase 5 — Offline-first** concluída: venda e sangria/suprimento funcionam sem conexão (IndexedDB + fila), sincronização automática ao voltar online, idempotência real via `client_operation_id`, conflitos de estoque nunca resolvidos silenciosamente. Ver [docs/offline.md](docs/offline.md).
 
+**Fase 6 — Fechamento do plano Básico** concluída: dashboard com métricas reais, relatórios (produtos mais vendidos, formas de pagamento, vendas por vendedor), histórico de cliente, site público de vitrine (`/loja/[slug]`, sem carrinho). Ver [docs/basic-plan.md](docs/basic-plan.md).
+
 Ver [docs/architecture.md](docs/architecture.md) para o roadmap completo das próximas fases.
