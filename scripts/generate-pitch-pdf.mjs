@@ -7,7 +7,7 @@ const SUPABASE_URL = 'https://jmlxhsqfvxjggvqusleu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptbHhoc3FmdnhqZ2d2cXVzbGV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTE3NDYsImV4cCI6MjEwMjQyNzc0Nn0.dAtippakVgVqweGjHD767ePPX9g7urzjDLLeT9WFsDQ';
 
 async function generate() {
-  console.log('🚀 Iniciando captura em alta definição diretamente na Vercel Oficial...');
+  console.log('🚀 Iniciando geração do PDF Comercial com Capturas Desktop e Mobile...');
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -24,37 +24,40 @@ async function generate() {
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 2 });
-
-  // Injetar cookies de sessão Supabase para lojatenis-gray.vercel.app
-  if (authData?.session) {
-    const token = JSON.stringify(authData.session);
-    // Base64 chunk format used by @supabase/ssr
-    const b64 = Buffer.from(token).toString('base64');
-    await page.setCookie(
-      {
-        name: 'sb-jmlxhsqfvxjggvqusleu-auth-token',
-        value: encodeURIComponent(token),
-        domain: 'lojatenis-gray.vercel.app',
-        path: '/'
-      },
-      {
-        name: 'sb-jmlxhsqfvxjggvqusleu-auth-token.0',
-        value: b64,
-        domain: 'lojatenis-gray.vercel.app',
-        path: '/'
-      }
-    );
-  }
-
   const screenshotsDir = path.resolve('public/pitch-assets');
   if (!fs.existsSync(screenshotsDir)) {
     fs.mkdirSync(screenshotsDir, { recursive: true });
   }
 
-  // Fazer login real via form na Vercel se necessário
-  console.log('🔐 Acessando login na Vercel...');
+  const page = await browser.newPage();
+
+  // Função auxiliar de cookies Supabase
+  const applyAuthCookies = async (targetPage) => {
+    if (authData?.session) {
+      const token = JSON.stringify(authData.session);
+      const b64 = Buffer.from(token).toString('base64');
+      await targetPage.setCookie(
+        {
+          name: 'sb-jmlxhsqfvxjggvqusleu-auth-token',
+          value: encodeURIComponent(token),
+          domain: 'lojatenis-gray.vercel.app',
+          path: '/'
+        },
+        {
+          name: 'sb-jmlxhsqfvxjggvqusleu-auth-token.0',
+          value: b64,
+          domain: 'lojatenis-gray.vercel.app',
+          path: '/'
+        }
+      );
+    }
+  };
+
+  // --- CAPTURAS DESKTOP (1440x900) ---
+  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 2 });
+  await applyAuthCookies(page);
+
+  console.log('🔐 Acessando login na Vercel (Desktop)...');
   try {
     await page.goto('https://lojatenis-gray.vercel.app/login', { waitUntil: 'networkidle2', timeout: 30000 });
     const emailInput = await page.$('input[type="email"], #email');
@@ -70,58 +73,69 @@ async function generate() {
     console.warn('Aviso login Vercel:', e.message);
   }
 
-  // 1. Capturar print da Visão Geral (Painel do Dono - Olá, Higsson)
-  console.log('📸 Capturando print da Visão Geral (Painel do Dono) na Vercel...');
+  // 1. Desktop: Visão Geral Higsson
+  console.log('📸 Capturando Visão Geral Desktop...');
   try {
     await page.goto('https://lojatenis-gray.vercel.app/dashboard', { waitUntil: 'networkidle2', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, 2000));
     await page.screenshot({ path: path.join(screenshotsDir, 'visao_geral.jpg'), quality: 95, type: 'jpeg' });
   } catch (e) {
-    console.warn('Aviso visão geral:', e.message);
+    console.warn('Aviso visao geral:', e.message);
   }
 
-  // 2. Capturar print do PDV Balcão na hora da venda
-  console.log('📸 Capturando print do PDV na hora da venda na Vercel...');
+  // 2. Desktop: PDV Balcão
+  console.log('📸 Capturando PDV Desktop...');
   try {
     await page.goto('https://lojatenis-gray.vercel.app/dashboard/pdv', { waitUntil: 'networkidle2', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 2500));
-    
-    // Pesquisar Nike para mostrar resultados filtrados com foto
-    try {
-      const searchInput = await page.$('input[placeholder*="Buscar"]');
-      if (searchInput) {
-        await searchInput.type('Nike');
-        await new Promise(r => setTimeout(r, 1500));
-      }
-    } catch {}
-
+    await new Promise(r => setTimeout(r, 2000));
+    const searchInput = await page.$('input[placeholder*="Buscar"]');
+    if (searchInput) {
+      await searchInput.type('Nike');
+      await new Promise(r => setTimeout(r, 1000));
+    }
     await page.screenshot({ path: path.join(screenshotsDir, 'pdv_venda.jpg'), quality: 95, type: 'jpeg' });
   } catch (e) {
-    console.warn('Aviso pdv venda:', e.message);
+    console.warn('Aviso PDV:', e.message);
   }
 
-  // 3. Capturar print da Vitrine Hero
-  console.log('📸 Capturando print da Vitrine Hero na Vercel...');
+  // --- CAPTURAS MOBILE (390x844 - iPhone 14/15) ---
+  console.log('📱 Alternando para Viewport Mobile (390x844)...');
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await applyAuthCookies(page);
+
+  // 3. Mobile: Hero Banner
+  console.log('📸 Capturando Hero Mobile...');
   try {
     await page.goto('https://lojatenis-gray.vercel.app/loja/tenisstore', { waitUntil: 'networkidle2', timeout: 30000 });
     await page.evaluate(() => window.scrollTo(0, 0));
     await new Promise(r => setTimeout(r, 2000));
-    await page.screenshot({ path: path.join(screenshotsDir, 'hero_banner.jpg'), quality: 95, type: 'jpeg' });
+    await page.screenshot({ path: path.join(screenshotsDir, 'hero_mobile.jpg'), quality: 95, type: 'jpeg' });
   } catch (e) {
-    console.warn('Aviso hero:', e.message);
+    console.warn('Aviso hero mobile:', e.message);
   }
 
-  // 4. Capturar print do Catálogo Real
-  console.log('📸 Capturando print do Catálogo Real na Vercel...');
+  // 4. Mobile: Catálogo de Tênis com Favoritos
+  console.log('📸 Capturando Catálogo de Tênis Mobile...');
   try {
     await page.evaluate(() => {
       const el = document.getElementById('produtos');
       if (el) el.scrollIntoView();
+      else window.scrollTo(0, 520);
     });
     await new Promise(r => setTimeout(r, 2000));
-    await page.screenshot({ path: path.join(screenshotsDir, 'catalogo_grid.jpg'), quality: 95, type: 'jpeg' });
+    await page.screenshot({ path: path.join(screenshotsDir, 'catalogo_mobile.jpg'), quality: 95, type: 'jpeg' });
   } catch (e) {
-    console.warn('Aviso catalogo:', e.message);
+    console.warn('Aviso catalogo mobile:', e.message);
+  }
+
+  // 5. Mobile: PDV de Vendas no Celular
+  console.log('📸 Capturando PDV Mobile...');
+  try {
+    await page.goto('https://lojatenis-gray.vercel.app/dashboard/pdv', { waitUntil: 'networkidle2', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 2500));
+    await page.screenshot({ path: path.join(screenshotsDir, 'pdv_mobile.jpg'), quality: 95, type: 'jpeg' });
+  } catch (e) {
+    console.warn('Aviso PDV mobile:', e.message);
   }
 
   // Carregar imagens em base64
@@ -134,10 +148,11 @@ async function generate() {
 
   const imgVisaoGeral = toBase64(path.join(screenshotsDir, 'visao_geral.jpg'));
   const imgPdvVenda = toBase64(path.join(screenshotsDir, 'pdv_venda.jpg'));
-  const imgHero = toBase64(path.join(screenshotsDir, 'hero_banner.jpg'));
-  const imgCatalogo = toBase64(path.join(screenshotsDir, 'catalogo_grid.jpg'));
+  const imgHeroMobile = toBase64(path.join(screenshotsDir, 'hero_mobile.jpg'));
+  const imgCatalogoMobile = toBase64(path.join(screenshotsDir, 'catalogo_mobile.jpg'));
+  const imgPdvMobile = toBase64(path.join(screenshotsDir, 'pdv_mobile.jpg'));
 
-  // 5. Montar HTML Executivo de 4 Páginas de Luxo
+  // HTML Executivo de 5 Páginas de Alto Padrão
   const htmlContent = `
   <!DOCTYPE html>
   <html lang="pt-BR">
@@ -269,6 +284,49 @@ async function generate() {
         display: block;
       }
 
+      /* Estilos para Mockups Mobile de 3 Colunas */
+      .mobile-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 14px;
+        margin-top: 10px;
+      }
+
+      .phone-card {
+        background: #18181b;
+        border: 1px solid #3f3f46;
+        border-radius: 16px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .phone-title {
+        font-size: 11px;
+        font-weight: 800;
+        color: #f59e0b;
+        margin-bottom: 4px;
+        text-align: center;
+      }
+
+      .phone-desc {
+        font-size: 10px;
+        color: #a1a1aa;
+        text-align: center;
+        margin-bottom: 8px;
+        min-height: 28px;
+      }
+
+      .phone-frame {
+        width: 100%;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid #27272a;
+        background: #000;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+      }
+
       .timeline-table {
         width: 100%;
         border-collapse: collapse;
@@ -381,7 +439,7 @@ async function generate() {
       ${imgVisaoGeral ? `<div class="screenshot-container"><img class="screenshot-img" src="${imgVisaoGeral}" alt="Painel do Dono" /></div>` : ''}
     </div>
 
-    <!-- PÁGINA 2: PDV BALCÃO NA HORA DA VENDA -->
+    <!-- PÁGINA 2: PDV BALCÃO NA HORA DA VENDA (DESKTOP) -->
     <div class="page">
       <div class="header-bar">
         <div class="company-badge">
@@ -399,21 +457,54 @@ async function generate() {
       ${imgPdvVenda ? `<div class="screenshot-container" style="margin-bottom: 12px;"><img class="screenshot-img" src="${imgPdvVenda}" alt="PDV Venda" /></div>` : ''}
     </div>
 
-    <!-- PÁGINA 3: VITRINE HYPE E CATÁLOGO REAL -->
+    <!-- PÁGINA 3: 100% RESPONSIVO PARA SMARTPHONES (APP MOBILE) -->
     <div class="page">
       <div class="header-bar">
         <div class="company-badge">
           <span class="company-name">Tk Coding Vibe Soluções Tecnológicas</span>
           <span class="company-author">Por Pabricio Juan</span>
         </div>
-        <div class="badge-tag">Loja Virtual • Vitrine & Catálogo</div>
+        <div class="badge-tag">📱 100% Mobile App • iOS & Android</div>
       </div>
 
-      <div style="font-size: 11px; font-weight: 800; color: #f59e0b; margin-bottom: 4px;">🔥 TELA 3 — HERO BANNER COM TÊNIS EM ESTOQUE & FRETE R$ 15 MANAUS:</div>
-      ${imgHero ? `<div class="screenshot-container" style="margin-bottom: 14px;"><img class="screenshot-img" src="${imgHero}" alt="Vitrine Hero" /></div>` : ''}
+      <h2 style="font-size: 22px; font-weight: 900; color: #fff; margin-bottom: 4px;">📱 Experiência de Aplicativo Nativo no Smartphone</h2>
+      <p style="font-size: 11px; color: #a1a1aa; margin-bottom: 10px;">
+        Layout 100% responsivo, travado contra rolagens laterais e adaptado para a palma da mão: seus clientes compram com facilidade e você opera o PDV de qualquer lugar.
+      </p>
 
-      <div style="font-size: 11px; font-weight: 800; color: #f59e0b; margin-bottom: 4px;">👟 TELA 4 — CATÁLOGO REAL DE SNEAKERS COM FOTOS AUTÊNTICAS E PREÇOS:</div>
-      ${imgCatalogo ? `<div class="screenshot-container"><img class="screenshot-img" src="${imgCatalogo}" alt="Catálogo Real" /></div>` : ''}
+      <div class="mobile-grid">
+        <!-- Celular 1: Hero Mobile -->
+        <div class="phone-card">
+          <div class="phone-title">🔥 1. Hero Banner Mobile</div>
+          <div class="phone-desc">Destaque do calçado em estoque com Frete R$ 15 Manaus e compra em 1 toque.</div>
+          <div class="phone-frame">
+            ${imgHeroMobile ? `<img class="screenshot-img" src="${imgHeroMobile}" alt="Hero Mobile" />` : ''}
+          </div>
+        </div>
+
+        <!-- Celular 2: Catálogo Mobile -->
+        <div class="phone-card">
+          <div class="phone-title">👟 2. Catálogo & Favoritos</div>
+          <div class="phone-desc">Grade em 2 colunas com fotos reais, descontos e botão de favoritar com coração.</div>
+          <div class="phone-frame">
+            ${imgCatalogoMobile ? `<img class="screenshot-img" src="${imgCatalogoMobile}" alt="Catálogo Mobile" />` : ''}
+          </div>
+        </div>
+
+        <!-- Celular 3: PDV Mobile -->
+        <div class="phone-card">
+          <div class="phone-title">⚡ 3. PDV Balcão no Celular</div>
+          <div class="phone-desc">Venda presencial rápida no balcão e despacho de entregas com link do Uber.</div>
+          <div class="phone-frame">
+            ${imgPdvMobile ? `<img class="screenshot-img" src="${imgPdvMobile}" alt="PDV Mobile" />` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 8px 12px; font-size: 10.5px; color: #fde68a; display: flex; align-items: center; justify-content: space-between;">
+        <span>✨ <strong>Acesso Instantâneo sem Download:</strong> Abre em menos de 1 segundo direto do link da bio do Instagram ou WhatsApp.</span>
+        <span style="font-weight: 800; color: #f59e0b; text-transform: uppercase;">Incluso no Plano Start</span>
+      </div>
     </div>
 
     <!-- PÁGINA 4: CRONOGRAMA, INVESTIMENTO E FECHAMENTO -->
@@ -496,10 +587,12 @@ async function generate() {
   </html>
   `;
 
-  console.log('📄 Renderizando HTML e gerando arquivo PDF executivo...');
+  console.log('📄 Renderizando HTML e gerando arquivo PDF executivo com seção Mobile...');
   const tempHtmlPath = path.resolve('public/pitch-assets/pitch.html');
   fs.writeFileSync(tempHtmlPath, htmlContent);
 
+  // Reabrir viewport padrão para renderização do PDF A4
+  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 2 });
   await page.goto(`file://${tempHtmlPath}`, { waitUntil: 'load', timeout: 60000 });
 
   const pdfPath = path.resolve('PITCH_PROPOSTA_COMERCIAL.pdf');
