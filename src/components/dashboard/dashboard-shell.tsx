@@ -30,17 +30,16 @@ import { WholesaleAlertsDialog } from '@/components/pdv/wholesale-alerts-dialog'
 import type { AppUser } from '@/types/database';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Visão geral', icon: LayoutDashboard, enabled: true, plan: 'start' },
-  { href: '/dashboard/produtos', label: 'Produtos', icon: Package, enabled: true, plan: 'start' },
-  { href: '/dashboard/estoque', label: 'Estoque', icon: Boxes, enabled: true, plan: 'start' },
-  { href: '/dashboard/pdv', label: 'PDV', icon: ShoppingCart, enabled: true, plan: 'start' },
-  { href: '/dashboard/clientes', label: 'Clientes', icon: Users, enabled: true, plan: 'start' },
-  { href: '/dashboard/pedidos', label: 'Pedidos & Envios', icon: ClipboardList, enabled: false, plan: 'pro' },
-  { href: '/dashboard/hero', label: 'Vitrine & Hero', icon: Sparkles, enabled: false, plan: 'pro' },
-  { href: '/dashboard/colaboradores', label: 'Colaboradores', icon: Users, enabled: false, plan: 'pro' },
-  { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings, enabled: false, plan: 'pro' },
-  { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart3, enabled: false, plan: 'enterprise' },
+  { href: '/dashboard', label: 'Visão geral', icon: LayoutDashboard, enabled: true },
+  { href: '/dashboard/produtos', label: 'Produtos', icon: Package, enabled: true },
+  { href: '/dashboard/estoque', label: 'Estoque', icon: Boxes, enabled: true },
+  { href: '/dashboard/pdv', label: 'PDV', icon: ShoppingCart, enabled: true },
+  { href: '/dashboard/clientes', label: 'Clientes', icon: Users, enabled: true },
+  { href: '/dashboard/colaboradores', label: 'Colaboradores', icon: Users, enabled: true },
+  { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings, enabled: true },
+  { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart3, enabled: true },
 ];
+
 
 const ROLE_LABELS: Record<AppUser['role'], string> = {
   owner: 'Dono(a)',
@@ -89,29 +88,20 @@ export function DashboardShell({
                 key={item.href}
                 href={item.enabled ? item.href : '#'}
                 aria-disabled={!item.enabled}
-                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : item.enabled
-                      ? 'text-foreground hover:bg-accent'
-                      : 'cursor-not-allowed text-muted-foreground/50'
+                    ? 'bg-primary text-primary-foreground font-bold shadow-xs'
+                    : 'text-foreground hover:bg-accent'
                 }`}
-                onClick={(e) => {
-                  if (!item.enabled) e.preventDefault();
-                }}
               >
                 <Icon className="h-4 w-4" />
                 {item.label}
-                {!item.enabled && (
-                  <Badge variant="outline" className="ml-auto text-[9px] font-black uppercase text-amber-600 bg-amber-50 border-amber-200">
-                    {item.plan === 'enterprise' ? 'Enterprise' : 'Plano Pro'}
-                  </Badge>
-                )}
               </Link>
             );
           })}
         </nav>
       </aside>
+
 
       <div className="flex flex-1 flex-col">
         <header className="flex h-16 items-center justify-end gap-4 border-b px-6">
