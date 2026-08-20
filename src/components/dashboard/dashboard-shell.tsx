@@ -10,8 +10,6 @@ import {
   Users,
   Settings,
   BarChart3,
-  Sparkles,
-  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -24,8 +22,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { logout } from '@/app/(auth)/actions';
+
 import { WholesaleAlertsDialog } from '@/components/pdv/wholesale-alerts-dialog';
 import type { AppUser } from '@/types/database';
 
