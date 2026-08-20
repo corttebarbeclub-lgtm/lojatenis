@@ -53,32 +53,22 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
         onClick={() => setIsLightboxOpen(true)}
         className="relative aspect-square overflow-hidden rounded-3xl bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200/80 shadow-sm cursor-crosshair group"
       >
-        {/* Imagem Normal */}
+        {/* Imagem com Zoom Suave por Transformação CSS — Zero falha de tela branca */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={galleryImages[activeIndex]}
           alt={`${productName} — Foto ${activeIndex + 1}`}
-          className={`h-full w-full object-cover transition-opacity duration-200 ${
-            isZoomed ? 'opacity-0' : 'opacity-100'
-          }`}
+          style={{
+            transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+            transform: isZoomed ? 'scale(2.2)' : 'scale(1)',
+          }}
+          className="h-full w-full object-cover transition-transform duration-100 ease-out will-change-transform pointer-events-none"
         />
 
-        {/* Lupa / Zoom Magnifier em Alta Resolução */}
-        {isZoomed && (
-          <div
-            className="absolute inset-0 bg-no-repeat transition-all duration-75"
-            style={{
-              backgroundImage: `url(${galleryImages[activeIndex]})`,
-              backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
-              backgroundSize: '240%',
-            }}
-          />
-        )}
-
         {/* Badge de Zoom */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-white pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
-          <ZoomIn className="h-3.5 w-3.5" />
-          <span>Zoom (Passe o mouse ou clique)</span>
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-white pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity">
+          <ZoomIn className="h-3.5 w-3.5 text-amber-400" />
+          <span>Zoom (Passe o mouse ou toque)</span>
         </div>
 
         {/* Navegação Prev / Next */}
