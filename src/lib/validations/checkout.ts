@@ -26,6 +26,7 @@ export const customerSchema = z.object({
     .refine((v) => isValidCPF(v), 'CPF inválido'),
   phone: z.string().min(10, 'Informe um telefone válido'),
   email: z.string().email('E-mail inválido'),
+  password: z.string().min(4, 'Senha deve ter no mínimo 4 caracteres').optional(),
 });
 
 export const addressSchema = z.object({
@@ -39,19 +40,19 @@ export const addressSchema = z.object({
 });
 
 export const paymentMethods = [
-  { value: 'pix', label: 'PIX', icon: '💠' },
+  { value: 'pix', label: 'PIX (Aprovação Imediata)', icon: '💠' },
   { value: 'credit', label: 'Cartão de Crédito', icon: '💳' },
   { value: 'debit', label: 'Cartão de Débito', icon: '💳' },
-  { value: 'boleto', label: 'Boleto Bancário', icon: '📄' },
   { value: 'cash', label: 'Dinheiro na entrega', icon: '💵' },
 ] as const;
 
 export type PaymentMethod = typeof paymentMethods[number]['value'];
 
 export const paymentSchema = z.object({
-  method: z.enum(['pix', 'credit', 'debit', 'boleto', 'cash']),
+  method: z.enum(['pix', 'credit', 'debit', 'cash']),
   installments: z.number().int().min(1).max(12).optional(),
 });
+
 
 export const shippingOptions = [
   { value: 'local', label: 'Retirada na Loja', priceCents: 0, days: '0' },

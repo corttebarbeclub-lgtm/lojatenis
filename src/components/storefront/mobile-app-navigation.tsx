@@ -7,7 +7,7 @@ import {
   Home,
   Search,
   ShoppingBag,
-  Package,
+  User,
   MessageCircle,
 } from 'lucide-react';
 import { useCartStore } from '@/lib/stores/cart-store';
@@ -29,21 +29,20 @@ export function MobileAppNavigation({ slug, whatsappNumber }: MobileAppNavigatio
 
   const cartCount = mounted ? totalItems : 0;
   const isHome = pathname === `/loja/${slug}` || pathname === `/loja/${slug}/`;
-  const isWholesale = pathname.includes('/atacado');
+  const isAccount = pathname.includes('/minha-conta');
   const isCheckout = pathname.includes('/checkout');
 
-  // Não exibir barra fixa sobreposta na tela de checkout para focar na finalização
   if (isCheckout) return null;
 
   const whatsappUrl = whatsappNumber
     ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Olá! Vim pelo site da HB Tênis e gostaria de atendimento.`)}`
-    : 'https://wa.me/5592999999999';
+    : 'https://wa.me/5592981883786';
 
   return (
     <>
       <nav
         aria-label="Navegação Mobile"
-        className="fixed bottom-0 inset-x-0 z-40 bg-black/95 text-white border-t border-amber-500/20 backdrop-blur-lg shadow-2xl lg:hidden pb-safe"
+        className="fixed bottom-0 inset-x-0 z-40 bg-black/95 text-white border-t border-amber-500/20 backdrop-blur-lg shadow-2xl lg:hidden pb-safe max-w-full"
       >
         <div className="grid grid-cols-5 h-16 items-center px-1">
           {/* Início */}
@@ -72,20 +71,20 @@ export function MobileAppNavigation({ slug, whatsappNumber }: MobileAppNavigatio
             <span className="text-[10px] tracking-tight">Buscar</span>
           </button>
 
-          {/* Atacado B2B */}
+          {/* Minha Conta / Pedidos */}
           <Link
-            href="/atacado"
+            href={`/loja/${slug}/minha-conta`}
             className={`flex flex-col items-center justify-center gap-1 transition-all ${
-              isWholesale ? 'text-amber-400 font-black' : 'text-gray-400 hover:text-white'
+              isAccount ? 'text-amber-400 font-black' : 'text-gray-400 hover:text-white'
             }`}
           >
             <div className="relative">
-              <Package className="h-5 w-5 text-amber-500" />
+              <User className="h-5 w-5 text-amber-400" />
             </div>
-            <span className="text-[10px] font-bold tracking-tight text-amber-400">Atacado</span>
+            <span className="text-[10px] font-bold tracking-tight text-amber-400">Pedidos</span>
           </Link>
 
-          {/* Carrinho / Sacola com Contador Flutuante */}
+          {/* Carrinho / Sacola */}
           <button
             type="button"
             onClick={openCart}
@@ -102,20 +101,20 @@ export function MobileAppNavigation({ slug, whatsappNumber }: MobileAppNavigatio
             <span className="text-[10px] tracking-tight">Sacola</span>
           </button>
 
-          {/* WhatsApp Suporte Direto */}
+          {/* WhatsApp Suporte */}
           <a
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center justify-center gap-1 text-emerald-400 hover:text-emerald-300 transition-all"
           >
-            <MessageCircle className="h-5 w-5 fill-emerald-500/20" />
-            <span className="text-[10px] font-bold tracking-tight">Whats</span>
+            <MessageCircle className="h-5 w-5" />
+            <span className="text-[10px] tracking-tight font-bold">Whats</span>
           </a>
         </div>
       </nav>
 
-      {/* Modal de Busca Mobile */}
+      {/* Modal de Busca Rápida Mobile */}
       <MobileSearchModal
         open={searchModalOpen}
         onOpenChange={setSearchModalOpen}

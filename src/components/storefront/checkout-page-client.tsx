@@ -21,6 +21,10 @@ import {
   Package,
   Ship,
   Sparkles,
+  Lock,
+  MessageCircle,
+  Clock,
+  Car,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -35,6 +39,7 @@ interface CustomerData {
   cpf: string;
   phone: string;
   email: string;
+  password?: string;
 }
 
 interface AddressData {
@@ -89,12 +94,14 @@ export default function CheckoutPageClient({
   const [step, setStep] = useState(1);
   const [mounted, setMounted] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
 
   const [customer, setCustomer] = useState<CustomerData>({
     name: '',
     cpf: '',
     phone: '',
     email: '',
+    password: '',
   });
 
   const [address, setAddress] = useState<AddressData>({
@@ -112,13 +119,23 @@ export default function CheckoutPageClient({
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const [orderCompletedId, setOrderCompletedId] = useState<string | null>(null);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    // Pré-preencher dados salvos no localStorage se houver
+    const savedContact = localStorage.getItem('hb_customer_contact');
+    if (savedContact) {
+      if (savedContact.includes('@')) {
+        setCustomer((prev) => ({ ...prev, email: savedContact }));
+      } else {
+        setCustomer((prev) => ({ ...prev, phone: savedContact }));
+      }
+    }
+  }, []);
 
   // Busca CEP via ViaCEP
   async function handleCEPBlur() {
     const cleanCep = address.cep.replace(/\D/g, '');
     if (cleanCep.length !== 8) return;
-
     setCepLoading(true);
     try {
       const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
@@ -133,15 +150,26 @@ export default function CheckoutPageClient({
         }));
       }
     } catch {
-      // ignore network errors on blur
+      // Falha silenciosa
     } finally {
       setCepLoading(false);
     }
   }
 
+  // Avançar etapa com loading / feedback visual
+  function handleAdvanceStep() {
+    if (!canAdvance()) return;
+    setIsAdvancing(true);
+    setTimeout(() => {
+      setStep((s) => s + 1);
+      setIsAdvancing(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 250);
+  }
+
   if (!mounted) return null;
 
-  if (items.length === 0) {
+  if (items.length === 0 && !orderCompletedId) {
     return (
       <>
         <StorefrontHeader
@@ -151,29 +179,28 @@ export default function CheckoutPageClient({
           activePage="varejo"
         />
         <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-          <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-gray-50">
-            <ShoppingBag className="h-8 w-8 text-gray-200" />
+          <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-zinc-900 text-amber-400">
+            <ShoppingBag className="h-8 w-8" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900">Carrinho vazio</h1>
-          <p className="mt-2 text-sm text-gray-500">Adicione produtos antes de fazer checkout.</p>
+          <h1 className="text-xl font-bold text-gray-900">Seu carrinho está vazio</h1>
+          <p className="mt-2 text-sm text-gray-500">Adicione calçados antes de ir para o checkout.</p>
           <Link
             href={`/loja/${slug}`}
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gray-900 px-6 py-3 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-amber-400 px-6 py-3 text-sm font-black text-black hover:bg-amber-300 transition-colors shadow-md"
           >
             <ArrowLeft className="h-4 w-4" />
-            Voltar ao catálogo
+            Explorar Vitrine de Tênis
           </Link>
         </div>
       </>
     );
   }
 
-  // Cálculo de Frete Dinâmico com regras do Amazonas (Manaus = R$ 1, Interior = R$ 100)
+  // Cálculo de Frete: Manaus = R$ 15,00 | Interior AM = R$ 100,00
   const shippingInfo = getAmazonasShipping(address.city || 'Manaus', address.state || 'AM');
   const shippingCents = shippingInfo.shippingCents;
   const totalCents = subtotal + shippingCents;
   
-  // Parcelamento com regra: taxa 4% base + 1% ao mês
   const installments = getInstallments(totalCents);
   const selectedInstallment = installments.find((i) => i.installments === installmentCount) || installments[0];
   const finalPayableCents = payment === 'credit' ? selectedInstallment.totalWithFeeCents : totalCents;
@@ -202,6 +229,9 @@ export default function CheckoutPageClient({
   async function handleFinalize() {
     setSubmittingOrder(true);
     try {
+      // Salvar contato no localStorage para consultas futuras
+      localStorage.setItem('hb_customer_contact', customer.email || customer.phone);
+
       const res = await fetch('/api/storefront/submit-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -231,51 +261,127 @@ export default function CheckoutPageClient({
     }
   }
 
+  // TELA DE SUCESSO E ACOMPANHAMENTO DO PEDIDO EM TEMPO REAL
   if (orderCompletedId) {
+    const formattedOrderNumber = orderCompletedId.slice(0, 8).toUpperCase();
+    const whatsappMsg = `Olá HB Tênis! Acabei de concluir o pedido *#${formattedOrderNumber}* no site.\n\n*Cliente:* ${customer.name}\n*Total:* ${formatPrice(finalPayableCents)}\n*Forma de Pagamento:* ${payment.toUpperCase()}\n*Endereço:* ${address.street}, ${address.number} - ${address.neighborhood}, ${address.city}/${address.state}\n\nGostaria de confirmar o pagamento e envio!`;
+
     return (
-      <>
+      <div className="min-h-screen bg-black text-white selection:bg-amber-400 selection:text-black">
         <StorefrontHeader
           storeName={storeName}
           slug={slug}
           whatsappNumber={whatsappNumber}
           activePage="varejo"
         />
-        <div className="mx-auto max-w-2xl px-4 py-16 text-center space-y-6">
-          <div className="mx-auto h-20 w-20 rounded-3xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-lg border-2 border-emerald-300">
-            <CheckCircle2 className="h-10 w-10" />
-          </div>
+        <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16 space-y-8">
+          
+          {/* Card Principal de Sucesso */}
+          <div className="rounded-3xl bg-zinc-950 border border-zinc-800 p-6 sm:p-10 text-center space-y-5 shadow-2xl relative overflow-hidden">
+            <div className="mx-auto h-20 w-20 rounded-3xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40 shadow-xl">
+              <CheckCircle2 className="h-10 w-10" />
+            </div>
 
-          <div className="space-y-2">
-            <span className="text-xs font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-              Estoque Sequestrado & Reservado
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-900">
-              🎉 Pedido Enviado para o Caixa da Loja!
-            </h1>
-            <p className="text-sm text-gray-600 max-w-md mx-auto">
-              Nº do Pedido: <strong className="font-mono text-black">#{orderCompletedId.slice(0, 8).toUpperCase()}</strong>
-            </p>
-            <p className="text-xs text-gray-500 max-w-lg mx-auto leading-relaxed pt-2">
-              Seus pares de tênis foram reservados no estoque central e seu pedido já entrou diretamente na <strong>fila do PDV da HB Tênis</strong> para aprovação e emissão do cupom não fiscal de entrega.
-            </p>
-          </div>
+            <div className="space-y-2">
+              <span className="text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 px-3.5 py-1 rounded-full border border-emerald-500/30">
+                ✅ Estoque Reservado com Sucesso
+              </span>
+              <h1 className="text-2xl sm:text-4xl font-black text-white">
+                🎉 Pedido Enviado para o Caixa da HB Tênis!
+              </h1>
+              <p className="text-sm font-mono text-amber-400 font-bold">
+                CÓDIGO DO PEDIDO: #{formattedOrderNumber}
+              </p>
+            </div>
 
-          <div className="rounded-2xl bg-zinc-50 p-4 border border-zinc-200 max-w-md mx-auto text-left text-xs space-y-1.5">
-            <p className="font-bold text-gray-800">📍 Dados de Entrega Registrados:</p>
-            <p className="text-gray-600">{customer.name} • {customer.phone}</p>
-            <p className="text-gray-600">{address.street}, Nº {address.number} - {address.neighborhood}, {address.city}/{address.state}</p>
-          </div>
+            {/* Linha do Tempo Visual do Status */}
+            <div className="pt-4 border-t border-zinc-800 text-left">
+              <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400 mb-4 text-center">
+                Status do seu Pedido em Tempo Real:
+              </h3>
 
-          <div className="pt-4">
-            <Link
-              href={`/loja/${slug}`}
-              className="inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-black text-white font-black text-xs hover:bg-zinc-800 shadow-md transition-all"
-            >
-              Continuar Comprando na Loja
-            </Link>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="rounded-2xl bg-zinc-900 border border-emerald-500/50 p-3.5 space-y-1">
+                  <div className="flex items-center gap-2 text-emerald-400 text-xs font-black">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>1. Recebido</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400">Chegou na fila do PDV da loja.</p>
+                </div>
+
+                <div className="rounded-2xl bg-zinc-900 border border-yellow-500/40 p-3.5 space-y-1">
+                  <div className="flex items-center gap-2 text-yellow-400 text-xs font-black">
+                    <Clock className="h-4 w-4" />
+                    <span>2. Pagamento</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400">Aguardando confirmação do PIX/Cartão.</p>
+                </div>
+
+                <div className="rounded-2xl bg-zinc-900/60 border border-zinc-800 p-3.5 space-y-1">
+                  <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold">
+                    <Package className="h-4 w-4" />
+                    <span>3. Separação</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500">Conferência na caixa oficial.</p>
+                </div>
+
+                <div className="rounded-2xl bg-zinc-900/60 border border-zinc-800 p-3.5 space-y-1">
+                  <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold">
+                    <Car className="h-4 w-4" />
+                    <span>4. Uber / Envio</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500">Link de rastreio ao vivo.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* O Que Fazer Agora? */}
+            <div className="rounded-2xl bg-emerald-950/30 border border-emerald-500/30 p-5 text-left space-y-3">
+              <p className="text-xs sm:text-sm font-bold text-emerald-300 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-emerald-400" />
+                O que vai acontecer em seguida?
+              </p>
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                O operador de caixa da HB Tênis já recebeu a notificação do seu pedido no PDV. Para agilizar a separação e liberação do envio via Uber/Motoboy, clique no botão abaixo para confirmar seu pagamento diretamente no WhatsApp da loja!
+              </p>
+
+              <a
+                href={`https://wa.me/${whatsappNumber || '5592981883786'}?text=${encodeURIComponent(whatsappMsg)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-black py-3.5 px-6 font-black text-xs sm:text-sm shadow-xl shadow-emerald-500/20 transition-all"
+              >
+                <MessageCircle className="h-4 w-4 fill-black" />
+                <span>Confirmar Pagamento no WhatsApp da Loja</span>
+              </a>
+            </div>
+
+            {/* Dados do Cliente e Endereço */}
+            <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 text-left text-xs space-y-1.5">
+              <p className="font-bold text-zinc-300">📍 Endereço de Entrega Cadastrado:</p>
+              <p className="text-zinc-400">{customer.name} • {customer.phone}</p>
+              <p className="text-zinc-400">{address.street}, Nº {address.number} - {address.neighborhood}, {address.city}/{address.state}</p>
+            </div>
+
+            {/* Ações */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <Link
+                href={`/loja/${slug}/minha-conta`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-xs shadow-md transition-all"
+              >
+                <Package className="h-4 w-4" />
+                <span>Acompanhar Pedido na Minha Conta</span>
+              </Link>
+              <Link
+                href={`/loja/${slug}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-xs border border-zinc-700 transition-all"
+              >
+                Voltar à Vitrine
+              </Link>
+            </div>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -288,17 +394,17 @@ export default function CheckoutPageClient({
         activePage="varejo"
       />
 
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
-        {/* Banner Promoção Amazonas */}
-        <div className="mb-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-4 text-white shadow-md flex items-center justify-between gap-4">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        {/* Banner de Frete Amazonas */}
+        <div className="mb-6 rounded-2xl bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-600 p-4 text-white shadow-lg">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md flex-shrink-0">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className="rounded-xl bg-black/20 p-2.5">
+              <Truck className="h-6 w-6 text-white" />
             </div>
             <div>
-              <p className="font-bold text-sm sm:text-base">🚀 Envio Especial para Todo o Amazonas!</p>
-              <p className="text-xs text-emerald-100">
-                Frete fixo em Manaus por apenas <strong className="text-white font-black">R$ 1,00</strong> | Interior do AM via Barco por <strong className="text-white font-black">R$ 100,00</strong>.
+              <h2 className="text-sm font-black">🚀 Envio Especial para Todo o Amazonas!</h2>
+              <p className="text-xs text-amber-100">
+                Frete fixo em Manaus por apenas <strong className="text-white font-black">R$ 15,00</strong> | Interior do AM via Barco por <strong className="text-white font-black">R$ 100,00</strong>.
               </p>
             </div>
           </div>
@@ -319,7 +425,7 @@ export default function CheckoutPageClient({
                         isDone
                           ? 'border-emerald-500 bg-emerald-500 text-white'
                           : isActive
-                          ? 'border-gray-900 bg-gray-900 text-white'
+                          ? 'border-amber-400 bg-amber-400 text-black font-black'
                           : 'border-gray-200 bg-white text-gray-400'
                       }`}
                     >
@@ -355,11 +461,17 @@ export default function CheckoutPageClient({
           <div className="lg:col-span-3">
             {/* STEP 1: Dados Pessoais */}
             {step === 1 && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 className="mb-5 text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <User className="h-5 w-5 text-gray-700" />
-                  1. Dados Pessoais do Comprador
-                </h2>
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <User className="h-5 w-5 text-gray-700" />
+                    1. Dados Pessoais do Comprador
+                  </h2>
+                  <span className="text-xs text-amber-600 font-bold bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                    Acesso ao Portal
+                  </span>
+                </div>
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -373,6 +485,7 @@ export default function CheckoutPageClient({
                       className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
                     />
                   </div>
+
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">CPF *</label>
@@ -401,15 +514,31 @@ export default function CheckoutPageClient({
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
-                    <input
-                      type="email"
-                      value={customer.email}
-                      onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
-                      placeholder="carlos@exemplo.com"
-                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
-                    />
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+                      <input
+                        type="email"
+                        value={customer.email}
+                        onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
+                        placeholder="carlos@exemplo.com"
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        <Lock className="h-3.5 w-3.5 text-amber-600" />
+                        <span>Criar Senha de Acesso</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={customer.password || ''}
+                        onChange={(e) => setCustomer({ ...customer, password: e.target.value })}
+                        placeholder="Para consultar pedidos depois"
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -457,7 +586,7 @@ export default function CheckoutPageClient({
                             className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
                           >
                             <optgroup label="Capital">
-                              <option value="Manaus">Manaus (Frete R$ 1,00)</option>
+                              <option value="Manaus">Manaus (Frete R$ 15,00)</option>
                             </optgroup>
                             <optgroup label="Interior do Amazonas (Via Barco - Frete R$ 100,00)">
                               {AMAZONAS_CITIES.filter((c) => !c.isCapital).map((c) => (
@@ -574,7 +703,7 @@ export default function CheckoutPageClient({
                           <span className="font-bold text-gray-900">{shippingInfo.label}</span>
                           {shippingInfo.isCapital && (
                             <span className="rounded bg-emerald-500 px-2 py-0.5 text-xs font-bold text-white">
-                              PROMO R$ 1,00
+                              FRETE R$ 15,00
                             </span>
                           )}
                           {!shippingInfo.isCapital && shippingInfo.isAmazonas && (
@@ -636,7 +765,7 @@ export default function CheckoutPageClient({
                   {payment === 'credit' && (
                     <div className="mt-5 rounded-xl bg-gray-50 p-4 border border-gray-200">
                       <label className="block text-sm font-bold text-gray-900 mb-2">
-                        Selecione o Parcelamento no Cartão (taxa de 4% + 1% por mês):
+                        Selecione o Parcelamento no Cartão:
                       </label>
                       <select
                         value={installmentCount}
@@ -645,13 +774,10 @@ export default function CheckoutPageClient({
                       >
                         {installments.map((inst) => (
                           <option key={inst.installments} value={inst.installments}>
-                            {inst.installments}x de {formatPrice(inst.valueCents)} — Total: {formatPrice(inst.totalWithFeeCents)} (taxa de {inst.feePercent}%)
+                            {inst.installments}x de {formatPrice(inst.valueCents)} — Total: {formatPrice(inst.totalWithFeeCents)}
                           </option>
                         ))}
                       </select>
-                      <p className="mt-2 text-xs text-gray-500">
-                        * O valor das parcelas inclui a taxa contratada de intermediação.
-                      </p>
                     </div>
                   )}
 
@@ -770,12 +896,21 @@ export default function CheckoutPageClient({
               <div className="space-y-2">
                 {step < 3 ? (
                   <button
-                    onClick={() => setStep(step + 1)}
-                    disabled={!canAdvance()}
+                    onClick={handleAdvanceStep}
+                    disabled={!canAdvance() || isAdvancing}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 py-3.5 text-sm font-bold text-white hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
-                    Avançar Etapa
-                    <ArrowRight className="h-4 w-4" />
+                    {isAdvancing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
+                        <span>Carregando etapa...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Avançar Etapa</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
                   </button>
                 ) : (
                   <button
@@ -786,12 +921,12 @@ export default function CheckoutPageClient({
                     {submittingOrder ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin text-amber-400" />
-                        Reservando Estoque no Caixa...
+                        <span>Reservando Estoque no Caixa...</span>
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                        Concluir Pedido & Enviar ao Caixa
+                        <span>Concluir Pedido & Enviar ao Caixa</span>
                       </>
                     )}
                   </button>

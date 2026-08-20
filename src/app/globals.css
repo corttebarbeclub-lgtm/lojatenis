@@ -73,9 +73,23 @@
     --sidebar-accent: oklch(0.269 0 0);
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --sidebar-ring: oklch(0.442 0 0);
   }
 }
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ocultar barra de rolagem horizontal indesejada */
+* {
+  box-sizing: border-box;
+}
+
 @layer base {
   * {
     @apply border-border;

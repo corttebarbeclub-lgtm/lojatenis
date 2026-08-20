@@ -13,6 +13,7 @@ import {
   Flame,
   ChevronDown,
   Sparkles,
+  User,
 } from 'lucide-react';
 import { useCartStore } from '@/lib/stores/cart-store';
 import { CartDrawer } from './cart-drawer';
@@ -172,13 +173,23 @@ export function StorefrontHeader({
                 </a>
               )}
 
+              {/* Minha Conta / Meus Pedidos */}
+              <Link
+                href={`/loja/${slug}/minha-conta`}
+                className="hidden md:flex items-center gap-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:border-amber-400 px-3.5 py-2 text-xs font-black text-white hover:text-amber-400 transition-all"
+              >
+                <User className="h-4 w-4 text-amber-400" />
+                <span>Meus Pedidos</span>
+              </Link>
+
               {/* Favoritos */}
-              <button
-                className="hidden md:flex h-10 w-10 items-center justify-center rounded-full hover:bg-zinc-800 text-zinc-300 hover:text-amber-400 transition-colors"
+              <Link
+                href={`/loja/${slug}/minha-conta`}
+                className="hidden md:flex h-10 w-10 items-center justify-center rounded-full hover:bg-zinc-800 text-zinc-300 hover:text-rose-500 transition-colors"
                 aria-label="Favoritos"
               >
                 <Heart className="h-5 w-5" />
-              </button>
+              </Link>
 
               {/* Carrinho de Compras */}
               <button
@@ -195,6 +206,7 @@ export function StorefrontHeader({
               </button>
             </div>
           </div>
+
 
           {/* Barra de Busca Mobile */}
           <div className="pb-3 md:hidden">
