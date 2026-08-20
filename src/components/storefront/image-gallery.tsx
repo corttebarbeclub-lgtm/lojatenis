@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, MouseEvent } from 'react';
-import { ChevronLeft, ChevronRight, ZoomIn, X, Maximize2, Minimize2 } from 'lucide-react';
+import { useState, useRef, useEffect, MouseEvent } from 'react';
+import { ChevronLeft, ChevronRight, ZoomIn, X, Maximize2, Minimize2, ArrowLeft } from 'lucide-react';
 
 interface ImageGalleryProps {
   images: string[];
@@ -24,6 +24,35 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
     'https://images.unsplash.com/photo-1597045566677-8cf032ed6634?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800&auto=format&fit=crop&q=80',
   ];
+
+  // Bloquear Scroll do Body e Escutar Tecla ESC quando Lightbox estiver aberto
+  useEffect(() => {
+    if (isLightboxOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setIsLightboxOpen(false);
+          setLightboxScale(1);
+        }
+        if (e.key === 'ArrowLeft') {
+          setActiveIndex((i) => (i === 0 ? galleryImages.length - 1 : i - 1));
+        }
+        if (e.key === 'ArrowRight') {
+          setActiveIndex((i) => (i === galleryImages.length - 1 ? 0 : i + 1));
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    } else {
+      document.body.style.overflow = '';
+    }
+  }, [isLightboxOpen, galleryImages.length]);
 
   function prev() {
     setActiveIndex((i) => (i === 0 ? galleryImages.length - 1 : i - 1));
@@ -51,9 +80,9 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
         onMouseLeave={() => setIsZoomed(false)}
         onMouseMove={handleMouseMove}
         onClick={() => setIsLightboxOpen(true)}
-        className="relative aspect-square overflow-hidden rounded-3xl bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200/80 shadow-sm cursor-crosshair group"
+        className="relative aspect-square overflow-hidden rounded-3xl bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200/80 shadow-sm cursor-zoom-in group"
       >
-        {/* Imagem com Zoom Suave por Transformação CSS — Zero falha de tela branca */}
+        {/* Imagem com Zoom Suave por Transformação CSS */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={galleryImages[activeIndex]}
@@ -66,9 +95,9 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
         />
 
         {/* Badge de Zoom */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-white pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/75 backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-white pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity">
           <ZoomIn className="h-3.5 w-3.5 text-amber-400" />
-          <span>Zoom (Passe o mouse ou toque)</span>
+          <span>Clique para Tela Cheia</span>
         </div>
 
         {/* Navegação Prev / Next */}
@@ -128,51 +157,78 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
         ))}
       </div>
 
-      {/* MODAL LIGHTBOX FULLSCREEN COM ZOOM ULTRA-HD */}
+      {/* MODAL LIGHTBOX FULLSCREEN COM ZOOM ULTRA-HD (Z-INDEX 99999 E FUNDO 100% OPACO) */}
       {isLightboxOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 animate-in fade-in duration-200">
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            setIsLightboxOpen(false);
+            setLightboxScale(1);
+          }}
+          className="fixed inset-0 z-[99999] flex flex-col items-center justify-between bg-black/98 p-4 sm:p-6 backdrop-blur-2xl animate-in fade-in duration-200"
+        >
           {/* Barra de Ferramentas Superior */}
-          <div className="absolute top-4 inset-x-4 flex items-center justify-between z-50 text-white">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm">{productName}</span>
-              <span className="text-xs text-gray-400">({activeIndex + 1} de {galleryImages.length})</span>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-7xl flex items-center justify-between z-10 text-white pb-3 border-b border-white/10"
+          >
+            <button
+              onClick={() => {
+                setIsLightboxOpen(false);
+                setLightboxScale(1);
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold transition-all"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Voltar para a Loja</span>
+            </button>
+
+            <div className="text-center hidden sm:block">
+              <span className="font-bold text-sm text-white block">{productName}</span>
+              <span className="text-xs text-amber-400 font-medium">Foto {activeIndex + 1} de {galleryImages.length}</span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setLightboxScale((s) => (s === 1 ? 2 : 1))}
-                className="flex items-center gap-1 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/20 transition-colors"
+                className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20 transition-colors"
               >
-                {lightboxScale === 1 ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-                {lightboxScale === 1 ? 'Zoom 2x' : 'Redefinir'}
+                {lightboxScale === 1 ? <Maximize2 className="h-4 w-4 text-amber-400" /> : <Minimize2 className="h-4 w-4 text-amber-400" />}
+                <span>{lightboxScale === 1 ? 'Zoom 2x' : 'Tamanho Normal'}</span>
               </button>
+
               <button
                 onClick={() => {
                   setIsLightboxOpen(false);
                   setLightboxScale(1);
                 }}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                className="flex items-center gap-1.5 rounded-xl bg-red-600/90 hover:bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition-all"
               >
                 <X className="h-5 w-5" />
+                <span>Fechar [ESC]</span>
               </button>
             </div>
           </div>
 
-          {/* Imagem Lightbox */}
+          {/* Área Central da Imagem Lightbox */}
           <div
-            className="relative max-h-[85vh] max-w-[85vw] overflow-auto flex items-center justify-center cursor-zoom-out"
-            onClick={() => setLightboxScale((s) => (s === 1 ? 1.8 : 1))}
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxScale((s) => (s === 1 ? 1.8 : 1));
+            }}
+            className="relative flex-1 w-full max-w-5xl my-auto flex items-center justify-center cursor-zoom-in overflow-hidden"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={galleryImages[activeIndex]}
               alt={productName}
               style={{ transform: `scale(${lightboxScale})` }}
-              className="max-h-[80vh] max-w-[80vw] object-contain transition-transform duration-300 rounded-xl"
+              className="max-h-[70vh] sm:max-h-[78vh] w-auto max-w-full object-contain transition-transform duration-300 rounded-2xl shadow-2xl select-none"
             />
           </div>
 
-          {/* Botões de Navegação Lightbox */}
+          {/* Botões de Navegação Anterior / Próxima no Lightbox */}
           {galleryImages.length > 1 && (
             <>
               <button
@@ -180,36 +236,48 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
                   e.stopPropagation();
                   prev();
                 }}
-                className="absolute left-6 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 transition-all"
+                className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md hover:bg-white/30 hover:scale-110 transition-all shadow-xl"
+                aria-label="Foto anterior"
               >
-                <ChevronLeft className="h-6 w-6" />
+                <ChevronLeft className="h-8 w-8" />
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   next();
                 }}
-                className="absolute right-6 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 transition-all"
+                className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md hover:bg-white/30 hover:scale-110 transition-all shadow-xl"
+                aria-label="Próxima foto"
               >
-                <ChevronRight className="h-6 w-6" />
+                <ChevronRight className="h-8 w-8" />
               </button>
             </>
           )}
 
-          {/* Thumbnails inferiores no Lightbox */}
-          <div className="absolute bottom-4 inset-x-0 flex justify-center gap-2 z-50">
-            {galleryImages.map((url, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveIndex(i)}
-                className={`h-14 w-14 rounded-xl overflow-hidden border-2 transition-all ${
-                  i === activeIndex ? 'border-white ring-2 ring-white/50 scale-105' : 'border-transparent opacity-40 hover:opacity-100'
-                }`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`Miniatura ${i + 1}`} className="h-full w-full object-cover" />
-              </button>
-            ))}
+          {/* Barra Inferior com Miniaturas e Instrução */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-2xl flex flex-col items-center gap-2 z-10 pt-2"
+          >
+            <div className="flex justify-center gap-2 overflow-x-auto p-1 max-w-full scrollbar-none">
+              {galleryImages.map((url, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveIndex(i)}
+                  className={`h-14 w-14 sm:h-16 sm:w-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+                    i === activeIndex
+                      ? 'border-amber-400 ring-2 ring-amber-400/50 scale-105 shadow-lg'
+                      : 'border-transparent opacity-40 hover:opacity-100'
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`Miniatura ${i + 1}`} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-400 font-medium text-center">
+              Dica: Clique na foto para alternar o zoom • Use as setas do teclado para navegar • Pressione ESC para fechar
+            </p>
           </div>
         </div>
       )}
