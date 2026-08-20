@@ -16,20 +16,18 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
   const [lightboxScale, setLightboxScale] = useState(1);
   const imgContainerRef = useRef<HTMLDivElement>(null);
 
-  // Imagens fallback caso o array tenha menos de 5 fotos
+  // Imagens da galeria
   const galleryImages = images && images.length > 0 ? images : [
-    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1597045566677-8cf032ed6634?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800&auto=format&fit=crop&q=80',
+    '/products/real/WhatsApp Image 2026-08-19 at 03.51.23 (2).jpeg'
   ];
 
   // Bloquear Scroll do Body e Escutar Tecla ESC quando Lightbox estiver aberto
   useEffect(() => {
     if (isLightboxOpen) {
       const originalOverflow = document.body.style.overflow;
+      const originalTouchAction = document.body.style.touchAction;
       document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
 
       const handleKeyDown = (e: globalThis.KeyboardEvent) => {
         if (e.key === 'Escape') {
@@ -47,10 +45,9 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
       window.addEventListener('keydown', handleKeyDown);
       return () => {
         document.body.style.overflow = originalOverflow;
+        document.body.style.touchAction = originalTouchAction;
         window.removeEventListener('keydown', handleKeyDown);
       };
-    } else {
-      document.body.style.overflow = '';
     }
   }, [isLightboxOpen, galleryImages.length]);
 
@@ -73,14 +70,14 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
 
   return (
     <div className="space-y-4 select-none">
-      {/* Imagem principal com Lupa de Zoom */}
+      {/* Imagem principal com Lupa de Zoom e Enquadramento Completo (sem cortes) */}
       <div
         ref={imgContainerRef}
         onMouseEnter={() => setIsZoomed(true)}
         onMouseLeave={() => setIsZoomed(false)}
         onMouseMove={handleMouseMove}
         onClick={() => setIsLightboxOpen(true)}
-        className="relative aspect-square overflow-hidden rounded-3xl bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200/80 shadow-sm cursor-zoom-in group"
+        className="relative aspect-square overflow-hidden rounded-3xl bg-neutral-900/5 dark:bg-neutral-900 border border-gray-200/80 shadow-sm cursor-zoom-in group flex items-center justify-center p-2 sm:p-4"
       >
         {/* Imagem com Zoom Suave por Transformação CSS */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -89,9 +86,9 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
           alt={`${productName} — Foto ${activeIndex + 1}`}
           style={{
             transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-            transform: isZoomed ? 'scale(2.2)' : 'scale(1)',
+            transform: isZoomed ? 'scale(2.0)' : 'scale(1)',
           }}
-          className="h-full w-full object-cover transition-transform duration-100 ease-out will-change-transform pointer-events-none"
+          className="h-full w-full object-contain transition-transform duration-100 ease-out will-change-transform pointer-events-none drop-shadow-md"
         />
 
         {/* Badge de Zoom */}
@@ -126,38 +123,40 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
           </>
         )}
 
-        {/* Indicador de fotos (1/5) */}
+        {/* Indicador de fotos (1/X) */}
         <div className="absolute bottom-3 right-3 z-10 rounded-lg bg-black/60 backdrop-blur-md px-2.5 py-1 text-[11px] font-bold text-white">
           {activeIndex + 1} / {galleryImages.length}
         </div>
       </div>
 
-      {/* Carrossel de Miniaturas (Thumbnails com 5 fotos) */}
-      <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-none">
-        {galleryImages.map((url, i) => (
-          <button
-            key={i}
-            onClick={() => setActiveIndex(i)}
-            className={`relative flex-shrink-0 h-20 w-20 overflow-hidden rounded-2xl border-2 transition-all duration-200 ${
-              i === activeIndex
-                ? 'border-gray-950 ring-2 ring-gray-950/20 shadow-md scale-102'
-                : 'border-gray-200 opacity-60 hover:opacity-100 hover:border-gray-400'
-            }`}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={url}
-              alt={`Miniatura ${i + 1} de ${productName}`}
-              className="h-full w-full object-cover"
-            />
-            {i === activeIndex && (
-              <div className="absolute inset-0 bg-gray-950/5 pointer-events-none" />
-            )}
-          </button>
-        ))}
-      </div>
+      {/* Carrossel de Miniaturas (Thumbnails) */}
+      {galleryImages.length > 1 && (
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-none">
+          {galleryImages.map((url, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveIndex(i)}
+              className={`relative flex-shrink-0 h-20 w-20 overflow-hidden rounded-2xl border-2 transition-all duration-200 bg-gray-50 p-1 flex items-center justify-center ${
+                i === activeIndex
+                  ? 'border-gray-950 ring-2 ring-gray-950/20 shadow-md scale-102'
+                  : 'border-gray-200 opacity-60 hover:opacity-100 hover:border-gray-400'
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt={`Miniatura ${i + 1} de ${productName}`}
+                className="h-full w-full object-contain"
+              />
+              {i === activeIndex && (
+                <div className="absolute inset-0 bg-gray-950/5 pointer-events-none" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* MODAL LIGHTBOX FULLSCREEN COM ZOOM ULTRA-HD (Z-INDEX 99999 E FUNDO 100% OPACO) */}
+      {/* MODAL LIGHTBOX FULLSCREEN COM ZOOM ULTRA-HD (ISOLAMENTO COMPLETO DE TELA) */}
       {isLightboxOpen && (
         <div
           role="dialog"
@@ -166,7 +165,7 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
             setIsLightboxOpen(false);
             setLightboxScale(1);
           }}
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-between bg-black/98 p-4 sm:p-6 backdrop-blur-2xl animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] h-screen w-screen flex flex-col items-center justify-between bg-black/98 p-4 sm:p-6 backdrop-blur-2xl animate-in fade-in duration-200 overscroll-none"
         >
           {/* Barra de Ferramentas Superior */}
           <div
@@ -178,10 +177,10 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
                 setIsLightboxOpen(false);
                 setLightboxScale(1);
               }}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold transition-all"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold transition-all"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>Voltar para a Loja</span>
+              <span>Voltar ao Produto</span>
             </button>
 
             <div className="text-center hidden sm:block">
@@ -191,11 +190,11 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setLightboxScale((s) => (s === 1 ? 2 : 1))}
+                onClick={() => setLightboxScale((s) => (s === 1 ? 1.7 : 1))}
                 className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20 transition-colors"
               >
                 {lightboxScale === 1 ? <Maximize2 className="h-4 w-4 text-amber-400" /> : <Minimize2 className="h-4 w-4 text-amber-400" />}
-                <span>{lightboxScale === 1 ? 'Zoom 2x' : 'Tamanho Normal'}</span>
+                <span>{lightboxScale === 1 ? 'Zoom Detalhes' : 'Encaixar na Tela'}</span>
               </button>
 
               <button
@@ -211,20 +210,20 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
             </div>
           </div>
 
-          {/* Área Central da Imagem Lightbox */}
+          {/* Área Central da Imagem Lightbox (100% Enquadrada, sem cortes) */}
           <div
             onClick={(e) => {
               e.stopPropagation();
-              setLightboxScale((s) => (s === 1 ? 1.8 : 1));
+              setLightboxScale((s) => (s === 1 ? 1.7 : 1));
             }}
-            className="relative flex-1 w-full max-w-5xl my-auto flex items-center justify-center cursor-zoom-in overflow-hidden"
+            className="relative flex-1 w-full max-w-5xl my-auto flex items-center justify-center cursor-zoom-in overflow-auto p-2"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={galleryImages[activeIndex]}
               alt={productName}
               style={{ transform: `scale(${lightboxScale})` }}
-              className="max-h-[70vh] sm:max-h-[78vh] w-auto max-w-full object-contain transition-transform duration-300 rounded-2xl shadow-2xl select-none"
+              className="max-h-[75vh] w-auto max-w-full object-contain transition-transform duration-300 rounded-2xl shadow-2xl select-none"
             />
           </div>
 
@@ -255,32 +254,35 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
           )}
 
           {/* Barra Inferior com Miniaturas e Instrução */}
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl flex flex-col items-center gap-2 z-10 pt-2"
-          >
-            <div className="flex justify-center gap-2 overflow-x-auto p-1 max-w-full scrollbar-none">
-              {galleryImages.map((url, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveIndex(i)}
-                  className={`h-14 w-14 sm:h-16 sm:w-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
-                    i === activeIndex
-                      ? 'border-amber-400 ring-2 ring-amber-400/50 scale-105 shadow-lg'
-                      : 'border-transparent opacity-40 hover:opacity-100'
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`Miniatura ${i + 1}`} className="h-full w-full object-cover" />
-                </button>
-              ))}
+          {galleryImages.length > 1 && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl flex flex-col items-center gap-2 z-10 pt-2"
+            >
+              <div className="flex justify-center gap-2 overflow-x-auto p-1 max-w-full scrollbar-none">
+                {galleryImages.map((url, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveIndex(i)}
+                    className={`h-14 w-14 sm:h-16 sm:w-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 bg-black/40 p-1 flex items-center justify-center ${
+                      i === activeIndex
+                        ? 'border-amber-400 ring-2 ring-amber-400/50 scale-105 shadow-lg'
+                        : 'border-transparent opacity-40 hover:opacity-100'
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`Miniatura ${i + 1}`} className="h-full w-full object-contain" />
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-400 font-medium text-center">
+                Dica: Clique na foto para alternar o zoom • Use as setas do teclado para navegar • Pressione ESC para fechar
+              </p>
             </div>
-            <p className="text-[11px] text-gray-400 font-medium text-center">
-              Dica: Clique na foto para alternar o zoom • Use as setas do teclado para navegar • Pressione ESC para fechar
-            </p>
-          </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
