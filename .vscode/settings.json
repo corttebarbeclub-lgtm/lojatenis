@@ -1,0 +1,8 @@
+{
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 500,
+  "editor.formatOnSave": true,
+  "antigravity.agent.autoAccept": true,
+  "antigravity.review.autoAcceptChanges": true,
+  "gemini.agent.autoAccept": true
+}

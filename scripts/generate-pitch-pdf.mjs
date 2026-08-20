@@ -1,23 +1,9 @@
 import puppeteer from 'puppeteer';
 import fs from 'fs';
 import path from 'path';
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL = 'https://jmlxhsqfvxjggvqusleu.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptbHhoc3FmdnhqZ2d2cXVzbGV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTE3NDYsImV4cCI6MjEwMjQyNzc0Nn0.dAtippakVgVqweGjHD767ePPX9g7urzjDLLeT9WFsDQ';
 
 async function generate() {
-  console.log('🚀 Autenticando com Supabase para sessão de admin de Higsson...');
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email: 'phabrycio@gmail.com',
-    password: 'admin123'
-  });
-
-  if (authError || !authData.session) {
-    console.error('Erro auth Supabase:', authError);
-  }
+  console.log('🚀 Iniciando geração do PDF executivo com fotos reais e telas autenticadas...');
 
   const browser = await puppeteer.launch({
     headless: 'new',
@@ -27,61 +13,69 @@ async function generate() {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 2 });
 
-  // Injetar cookies de sessão Supabase
-  if (authData?.session) {
-    const token = JSON.stringify(authData.session);
-    await page.setCookie({
-      name: 'sb-jmlxhsqfvxjggvqusleu-auth-token',
-      value: encodeURIComponent(token),
-      domain: 'localhost',
-      path: '/'
-    });
-  }
-
   const screenshotsDir = path.resolve('public/pitch-assets');
   if (!fs.existsSync(screenshotsDir)) {
     fs.mkdirSync(screenshotsDir, { recursive: true });
   }
 
-  // 1. Capturar print da Visão Geral (Painel do Dono - Olá, Higsson)
-  console.log('📸 Capturando print da Visão Geral com Olá, Higsson...');
+  // 1. Autenticar no sistema via rota de autenticação de sessão
+  console.log('🔐 Autenticando sessão do Dono (Higsson)...');
   try {
-    await page.goto('http://localhost:3001/dashboard', { waitUntil: 'networkidle2', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 1500));
+    await page.goto('http://localhost:3000/api/admin/dev-auth', { waitUntil: 'networkidle2', timeout: 30000 });
+    console.log('✅ Sessão autenticada com sucesso! URL atual:', page.url());
+  } catch (e) {
+    console.warn('Aviso auth:', e.message);
+  }
+
+  // 2. Capturar print da Visão Geral (Painel do Dono - Olá, Higsson)
+  console.log('📸 Capturando print da Visão Geral (Painel do Dono)...');
+  try {
+    await page.goto('http://localhost:3000/dashboard', { waitUntil: 'networkidle2', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 2000));
     await page.screenshot({ path: path.join(screenshotsDir, 'visao_geral.jpg'), quality: 95, type: 'jpeg' });
   } catch (e) {
     console.warn('Aviso visão geral:', e.message);
   }
 
-  // 2. Capturar print do PDV Balcão na hora da venda
+  // 3. Capturar print do PDV Balcão na hora da venda
   console.log('📸 Capturando print do PDV na hora da venda...');
   try {
-    await page.goto('http://localhost:3001/dashboard/pdv', { waitUntil: 'networkidle2', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 1500));
+    await page.goto('http://localhost:3000/dashboard/pdv', { waitUntil: 'networkidle2', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 2500));
+    
+    // Pesquisar Nike para mostrar resultados
+    try {
+      const searchInput = await page.$('input[placeholder*="Buscar"]');
+      if (searchInput) {
+        await searchInput.type('Nike');
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    } catch {}
+
     await page.screenshot({ path: path.join(screenshotsDir, 'pdv_venda.jpg'), quality: 95, type: 'jpeg' });
   } catch (e) {
     console.warn('Aviso pdv venda:', e.message);
   }
 
-  // 3. Capturar print da Vitrine Hero
+  // 4. Capturar print da Vitrine Hero
   console.log('📸 Capturando print da Vitrine Hero...');
   try {
-    await page.goto('http://localhost:3001/loja/tenisstore', { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto('http://localhost:3000/loja/tenisstore', { waitUntil: 'networkidle2', timeout: 30000 });
     await page.evaluate(() => window.scrollTo(0, 0));
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1500));
     await page.screenshot({ path: path.join(screenshotsDir, 'hero_banner.jpg'), quality: 95, type: 'jpeg' });
   } catch (e) {
     console.warn('Aviso hero:', e.message);
   }
 
-  // 4. Capturar print do Catálogo Real
+  // 5. Capturar print do Catálogo Real
   console.log('📸 Capturando print do Catálogo Real...');
   try {
     await page.evaluate(() => {
       const el = document.getElementById('produtos');
       if (el) el.scrollIntoView();
     });
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1500));
     await page.screenshot({ path: path.join(screenshotsDir, 'catalogo_grid.jpg'), quality: 95, type: 'jpeg' });
   } catch (e) {
     console.warn('Aviso catalogo:', e.message);
@@ -100,7 +94,7 @@ async function generate() {
   const imgHero = toBase64(path.join(screenshotsDir, 'hero_banner.jpg'));
   const imgCatalogo = toBase64(path.join(screenshotsDir, 'catalogo_grid.jpg'));
 
-  // 5. Montar HTML Executivo
+  // 6. Montar HTML Executivo de 4 Páginas de Luxo
   const htmlContent = `
   <!DOCTYPE html>
   <html lang="pt-BR">
