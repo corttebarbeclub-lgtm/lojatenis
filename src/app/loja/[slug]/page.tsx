@@ -142,7 +142,7 @@ export default async function StorefrontPage({ params, searchParams }: PageProps
               <Truck className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-black text-white">Manaus: R$ 1,00</p>
+              <p className="text-xs font-black text-white">Manaus: R$ 15,00</p>
               <p className="text-[11px] text-zinc-400 font-medium">Entrega expressa motoboy</p>
             </div>
           </div>
@@ -342,7 +342,7 @@ export default async function StorefrontPage({ params, searchParams }: PageProps
 
             <div className="space-y-2 text-xs">
               <h4 className="font-black text-amber-400 uppercase tracking-wider">Logística Regional</h4>
-              <p className="text-zinc-300">🚀 Manaus: Fixo <strong className="text-amber-400">R$ 1,00</strong> (Motoboy)</p>
+              <p className="text-zinc-300">🚀 Manaus: Fixo <strong className="text-amber-400">R$ 15,00</strong> (Motoboy)</p>
               <p className="text-zinc-300">🚢 Interior AM: Fixo <strong className="text-cyan-400">R$ 100,00</strong> (Barco)</p>
               <p className="text-zinc-300">📦 Estoque Central Integrado</p>
             </div>

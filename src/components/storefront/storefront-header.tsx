@@ -61,7 +61,7 @@ export function StorefrontHeader({
         {/* Top Mini Promo Bar */}
         <div className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 text-black py-1 px-4 text-center text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2">
           <Sparkles className="h-3.5 w-3.5" />
-          <span>HB TÊNIS MANAUS • FRETE R$ 1,00 PARA MANAUS • ENVIOS PARA TODO O AMAZONAS</span>
+          <span>HB TÊNIS MANAUS • FRETE R$ 15,00 PARA MANAUS • ENVIOS PARA TODO O AMAZONAS</span>
           <Sparkles className="h-3.5 w-3.5" />
         </div>
 

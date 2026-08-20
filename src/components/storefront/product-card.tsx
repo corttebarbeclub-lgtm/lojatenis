@@ -126,7 +126,7 @@ export function ProductCard({
           {hasStock && (
             <div className="pt-2 flex items-center gap-1 text-[11px] font-bold text-emerald-400">
               <Truck className="h-3.5 w-3.5 flex-shrink-0" />
-              <span>Frete R$ 1,00 Manaus</span>
+              <span>Frete R$ 15,00 Manaus</span>
             </div>
           )}
         </div>

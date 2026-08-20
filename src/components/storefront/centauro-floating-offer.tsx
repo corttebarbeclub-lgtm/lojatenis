@@ -44,7 +44,7 @@ export function CentauroFloatingOffer({ slug }: CentauroFloatingOfferProps) {
           </div>
 
           <p className="mt-1 text-[11px] text-zinc-300 leading-snug">
-            Sneakers Air Jordan, Nike e Adidas com <strong className="text-amber-400 font-bold">Frete R$ 1,00 para Manaus</strong> e parcelamento facilitado!
+            Sneakers Air Jordan, Nike e Adidas com <strong className="text-amber-400 font-bold">Frete R$ 15,00 para Manaus</strong> e parcelamento facilitado!
           </p>
 
           <Link

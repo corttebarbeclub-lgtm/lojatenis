@@ -98,26 +98,23 @@ export function CentauroHeroBanner({ slug, customBanners = [], products = [] }: 
     currentThemeKey = banner.bg_theme || 'gold_amber';
     currentCtaText = banner.cta_text || 'Comprar Agora • Ver Tamanhos';
 
-    // Buscar preço se tiver produto associado
-    if (banner.product_id) {
-      const matchProd = inStockProducts.find((p) => p.product_id === banner.product_id);
-      if (matchProd) {
-        currentPriceCents = matchProd.min_price_cents;
-        if (!currentImageUrl) currentImageUrl = matchProd.image_url || '';
-      }
+    // Se não tiver imagem customizada, pega a imagem do produto ou do catálogo real em estoque
+    if (!currentImageUrl && inStockProducts.length > 0) {
+      currentImageUrl = inStockProducts[0]?.image_url || '/products/real/WhatsApp Image 2026-08-19 at 03.51.23 (5).jpeg';
     }
   } else {
     const item = inStockProducts[currentIndex] || inStockProducts[0];
     currentTitle = item.product_name;
-    currentSubtitle = `Grade do 34 ao 44 disponível com entrega no mesmo dia em Manaus por R$ 1,00 ou envio expresso para todo o interior do Amazonas.`;
+    currentSubtitle = `Grade do 34 ao 44 disponível com entrega no mesmo dia em Manaus por R$ 15,00 ou envio expresso para todo o interior do Amazonas.`;
     currentTag = '🔥 TÊNIS EM ESTOQUE PRONTA ENTREGA';
     currentBadgeText = 'EM ESTOQUE EM MANAUS';
     currentBadgeType = 'shipping';
-    currentImageUrl = item.image_url || '';
+    currentImageUrl = item.image_url || '/products/real/WhatsApp Image 2026-08-19 at 03.51.23 (5).jpeg';
     currentProductUrl = `/loja/${slug}/produto/${item.product_id}`;
     currentPriceCents = item.min_price_cents;
     currentThemeKey = ['gold_amber', 'crimson_red', 'cyber_cyan', 'emerald_green', 'dark_purple'][currentIndex % 5];
   }
+
 
   const theme = THEME_GRADIENTS[currentThemeKey] || THEME_GRADIENTS.gold_amber;
 

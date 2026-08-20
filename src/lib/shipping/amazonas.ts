@@ -8,7 +8,7 @@ export interface AmazonasCity {
 }
 
 export const AMAZONAS_CITIES: AmazonasCity[] = [
-  { name: 'Manaus', isCapital: true, shippingCents: 100, deliveryDays: '1 dia útil (Entrega Expressa)', transportType: 'Motoboy / Express' },
+  { name: 'Manaus', isCapital: true, shippingCents: 1500, deliveryDays: '1 dia útil (Entrega Expressa)', transportType: 'Motoboy / Express' },
   { name: 'Alvarães', isCapital: false, shippingCents: 10000, deliveryDays: '3 a 7 dias (Barco/Lancha)', transportType: 'Barco Regional' },
   { name: 'Amaturá', isCapital: false, shippingCents: 10000, deliveryDays: '5 a 10 dias (Barco)', transportType: 'Barco Regional' },
   { name: 'Anamã', isCapital: false, shippingCents: 10000, deliveryDays: '2 a 5 dias (Barco)', transportType: 'Barco Regional' },
