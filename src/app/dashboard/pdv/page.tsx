@@ -41,33 +41,49 @@ export default async function PdvPage() {
       .returns<Pick<Seller, 'id' | 'full_name'>[]>(),
     supabase
       .from('product_variants')
-      .select('id, color, size, sku, barcode, price_cents, product:products(name), inventory(quantity)')
+      .select(`
+        id,
+        color,
+        size,
+        sku,
+        barcode,
+        price_cents,
+        product:products (
+          id,
+          name,
+          brand:brands ( name ),
+          product_images ( url, is_primary, position )
+        ),
+        inventory ( quantity )
+      `)
       .eq('tenant_id', user.tenant_id)
       .eq('is_active', true)
-      .returns<
-        {
-          id: string;
-          color: string;
-          size: string;
-          sku: string | null;
-          barcode: string | null;
-          price_cents: number;
-          product: { name: string } | null;
-          inventory: { quantity: number } | null;
-        }[]
-      >(),
+      .limit(500),
   ]);
 
-  const catalog = (catalogVariants ?? []).map((v) => ({
-    id: v.id,
-    color: v.color,
-    size: v.size,
-    sku: v.sku,
-    barcode: v.barcode,
-    price_cents: v.price_cents,
-    product_name: v.product?.name ?? '—',
-    available_quantity: v.inventory?.quantity ?? 0,
-  }));
+  const catalog = (catalogVariants ?? []).map((v) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prod = v.product as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const inv = Array.isArray(v.inventory) ? v.inventory[0] : (v.inventory as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const images = (prod?.product_images as any[]) || [];
+    const primaryImage =
+      images.find((img) => img.is_primary)?.url || images[0]?.url || null;
+
+    return {
+      id: v.id,
+      color: v.color,
+      size: v.size,
+      sku: v.sku,
+      barcode: v.barcode,
+      price_cents: v.price_cents,
+      product_name: prod?.name ?? '—',
+      brand_name: prod?.brand?.name ?? '',
+      available_quantity: inv?.quantity ?? 0,
+      image_url: primaryImage,
+    };
+  });
 
   return (
     <PdvClient

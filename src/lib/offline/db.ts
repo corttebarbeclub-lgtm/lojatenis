@@ -8,7 +8,9 @@ export interface CachedVariant {
   barcode: string | null;
   price_cents: number;
   product_name: string;
+  brand_name?: string;
   available_quantity: number;
+  image_url?: string | null;
 }
 
 export type QueuedOperation =
@@ -54,13 +56,16 @@ let dbPromise: Promise<IDBPDatabase<LojatenisDB>> | null = null;
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<LojatenisDB>('lojatenis-pdv', 1, {
+    dbPromise = openDB<LojatenisDB>('lojatenis-pdv', 2, {
       upgrade(db) {
-        const catalog = db.createObjectStore('catalog', { keyPath: 'id' });
-        catalog.createIndex('by-sku', 'sku');
-
-        const queue = db.createObjectStore('queue', { keyPath: 'clientOperationId' });
-        queue.createIndex('by-createdAt', 'createdAt');
+        if (!db.objectStoreNames.contains('catalog')) {
+          const catalog = db.createObjectStore('catalog', { keyPath: 'id' });
+          catalog.createIndex('by-sku', 'sku');
+        }
+        if (!db.objectStoreNames.contains('queue')) {
+          const queue = db.createObjectStore('queue', { keyPath: 'clientOperationId' });
+          queue.createIndex('by-createdAt', 'createdAt');
+        }
       },
     });
   }
@@ -68,34 +73,58 @@ function getDb() {
 }
 
 export async function replaceCatalog(variants: CachedVariant[]) {
-  const db = await getDb();
-  const tx = db.transaction('catalog', 'readwrite');
-  await tx.store.clear();
-  await Promise.all(variants.map((v) => tx.store.put(v)));
-  await tx.done;
+  try {
+    const db = await getDb();
+    const tx = db.transaction('catalog', 'readwrite');
+    await tx.store.clear();
+    await Promise.all(variants.map((v) => tx.store.put(v)));
+    await tx.done;
+  } catch (err) {
+    console.warn('Erro ao atualizar catálogo IndexedDB:', err);
+  }
 }
 
 export async function searchCatalog(query: string): Promise<CachedVariant[]> {
-  const db = await getDb();
-  const all = await db.getAll('catalog');
-  const q = query.toLowerCase();
-  return all
-    .filter(
-      (v) =>
-        v.available_quantity > 0 &&
-        (v.sku?.toLowerCase().includes(q) ||
-          v.barcode?.toLowerCase().includes(q) ||
-          v.product_name.toLowerCase().includes(q))
-    )
-    .slice(0, 10);
+  try {
+    const db = await getDb();
+    const all = await db.getAll('catalog');
+    const q = query.toLowerCase().trim();
+    if (!q) return all.slice(0, 15);
+
+    return all
+      .filter((v) => {
+        const prodName = (v.product_name || '').toLowerCase();
+        const brandName = (v.brand_name || '').toLowerCase();
+        const color = (v.color || '').toLowerCase();
+        const size = (v.size || '').toLowerCase();
+        const sku = (v.sku || '').toLowerCase();
+        const barcode = (v.barcode || '').toLowerCase();
+
+        return (
+          prodName.includes(q) ||
+          brandName.includes(q) ||
+          color.includes(q) ||
+          size.includes(q) ||
+          sku.includes(q) ||
+          barcode.includes(q)
+        );
+      })
+      .slice(0, 20);
+  } catch {
+    return [];
+  }
 }
 
 export async function decrementLocalStock(variantId: string, quantity: number) {
-  const db = await getDb();
-  const variant = await db.get('catalog', variantId);
-  if (variant) {
-    variant.available_quantity = Math.max(0, variant.available_quantity - quantity);
-    await db.put('catalog', variant);
+  try {
+    const db = await getDb();
+    const variant = await db.get('catalog', variantId);
+    if (variant) {
+      variant.available_quantity = Math.max(0, variant.available_quantity - quantity);
+      await db.put('catalog', variant);
+    }
+  } catch (err) {
+    console.warn('Erro ao decrementar estoque local:', err);
   }
 }
 
@@ -115,6 +144,10 @@ export async function removeQueuedOperation(clientOperationId: string) {
 }
 
 export async function getQueueLength(): Promise<number> {
-  const db = await getDb();
-  return db.count('queue');
+  try {
+    const db = await getDb();
+    return await db.count('queue');
+  } catch {
+    return 0;
+  }
 }

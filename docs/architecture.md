@@ -64,7 +64,7 @@ Ver o documento de Fase 0 (arquitetura completa, publicado como artifact) para o
 - ✅ **Fase 4** — PDV: caixa, venda com múltiplos pagamentos, desconto, cliente/vendedor, sangria/suprimento (trocas/devoluções ficam para fase própria)
 - ✅ **Fase 5** — Offline: venda e caixa funcionam sem conexão, idempotência real, conflitos de estoque nunca resolvidos silenciosamente
 - ✅ **Fase 6** — Fechamento do plano Básico: dashboard com métricas reais, relatórios, histórico de cliente, site público de vitrine
-- ⬜ **Fase 7** — E-commerce
+- ✅ **Fase 7** — E-commerce Varejo (vitrine Centauro-style, filtros, galeria, seletor) + Atacado B2B (preços atacado, qtd mínima, grade de tamanhos)
 - ⬜ **Fase 8** — WhatsApp (Evolution API)
 - ⬜ **Fase 9** — Fechamento do plano Profissional
 - ⬜ **Fase 10** — Multi-filial

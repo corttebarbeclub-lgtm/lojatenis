@@ -38,6 +38,8 @@ export async function createProduct(input: ProductInput) {
       barcode: v.barcode || null,
       cost_cents: v.cost_cents ?? null,
       price_cents: v.price_cents,
+      wholesale_price_cents: v.wholesale_price_cents ?? null,
+      wholesale_min_qty: v.wholesale_min_qty ?? null,
     }))
   );
 
@@ -103,6 +105,8 @@ export async function updateProduct(productId: string, input: ProductInput) {
       barcode: v.barcode || null,
       cost_cents: v.cost_cents ?? null,
       price_cents: v.price_cents,
+      wholesale_price_cents: v.wholesale_price_cents ?? null,
+      wholesale_min_qty: v.wholesale_min_qty ?? null,
     }))
   );
 

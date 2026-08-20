@@ -10,6 +10,8 @@ export const variantSchema = z.object({
   barcode: z.string().optional(),
   cost_cents: z.number().int().min(0).optional(),
   price_cents: z.number().int().min(1, 'Informe o preço de venda'),
+  wholesale_price_cents: z.number().int().min(0).optional(),
+  wholesale_min_qty: z.number().int().min(1).optional(),
 });
 
 // Selects HTML/Radix não conseguem representar "nenhum valor" sem usar

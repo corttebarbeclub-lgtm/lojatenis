@@ -41,4 +41,6 @@ SUPABASE_SERVICE_ROLE_KEY
 
 **Fase 6 — Fechamento do plano Básico** concluída: dashboard com métricas reais, relatórios (produtos mais vendidos, formas de pagamento, vendas por vendedor), histórico de cliente, site público de vitrine (`/loja/[slug]`, sem carrinho). Ver [docs/basic-plan.md](docs/basic-plan.md).
 
+**Fase 7 — E-commerce (Varejo + Atacado)** concluída: vitrine varejo estilo Centauro (busca, filtros por marca/categoria/gênero/estoque, galeria de imagens, seletor de cor/tamanho, CTA WhatsApp) e página dedicada de atacado B2B para revendedores (preços diferenciados, quantidade mínima por item, grade de tamanhos por cor). 20 modelos de tênis de exemplo inclusos (migration `017_sample_products.sql`). Ver [docs/architecture.md](docs/architecture.md).
+
 Ver [docs/architecture.md](docs/architecture.md) para o roadmap completo das próximas fases.

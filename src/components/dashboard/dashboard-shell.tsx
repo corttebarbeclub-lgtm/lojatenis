@@ -10,6 +10,8 @@ import {
   Users,
   Settings,
   BarChart3,
+  Sparkles,
+  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -24,16 +26,20 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { logout } from '@/app/(auth)/actions';
+import { WholesaleAlertsDialog } from '@/components/pdv/wholesale-alerts-dialog';
 import type { AppUser } from '@/types/database';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Visão geral', icon: LayoutDashboard, enabled: true },
-  { href: '/dashboard/produtos', label: 'Produtos', icon: Package, enabled: true },
-  { href: '/dashboard/estoque', label: 'Estoque', icon: Boxes, enabled: true },
-  { href: '/dashboard/pdv', label: 'PDV', icon: ShoppingCart, enabled: true },
-  { href: '/dashboard/clientes', label: 'Clientes', icon: Users, enabled: true },
-  { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart3, enabled: true },
-  { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings, enabled: false },
+  { href: '/dashboard', label: 'Visão geral', icon: LayoutDashboard, enabled: true, plan: 'start' },
+  { href: '/dashboard/produtos', label: 'Produtos', icon: Package, enabled: true, plan: 'start' },
+  { href: '/dashboard/estoque', label: 'Estoque', icon: Boxes, enabled: true, plan: 'start' },
+  { href: '/dashboard/pdv', label: 'PDV', icon: ShoppingCart, enabled: true, plan: 'start' },
+  { href: '/dashboard/clientes', label: 'Clientes', icon: Users, enabled: true, plan: 'start' },
+  { href: '/dashboard/pedidos', label: 'Pedidos & Envios', icon: ClipboardList, enabled: false, plan: 'pro' },
+  { href: '/dashboard/hero', label: 'Vitrine & Hero', icon: Sparkles, enabled: false, plan: 'pro' },
+  { href: '/dashboard/colaboradores', label: 'Colaboradores', icon: Users, enabled: false, plan: 'pro' },
+  { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings, enabled: false, plan: 'pro' },
+  { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart3, enabled: false, plan: 'enterprise' },
 ];
 
 const ROLE_LABELS: Record<AppUser['role'], string> = {
@@ -97,8 +103,8 @@ export function DashboardShell({
                 <Icon className="h-4 w-4" />
                 {item.label}
                 {!item.enabled && (
-                  <Badge variant="secondary" className="ml-auto text-[10px]">
-                    em breve
+                  <Badge variant="outline" className="ml-auto text-[9px] font-black uppercase text-amber-600 bg-amber-50 border-amber-200">
+                    {item.plan === 'enterprise' ? 'Enterprise' : 'Plano Pro'}
                   </Badge>
                 )}
               </Link>
@@ -109,6 +115,9 @@ export function DashboardShell({
 
       <div className="flex flex-1 flex-col">
         <header className="flex h-16 items-center justify-end gap-4 border-b px-6">
+          {/* Alertas Atacado B2B Global */}
+          <WholesaleAlertsDialog tenantId={user.tenant_id} />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2">

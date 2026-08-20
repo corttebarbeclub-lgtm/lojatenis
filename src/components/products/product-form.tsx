@@ -94,6 +94,8 @@ export function ProductForm({
             barcode: v.barcode ?? '',
             cost_cents: v.cost_cents ?? undefined,
             price_cents: v.price_cents,
+            wholesale_price_cents: (v as { wholesale_price_cents?: number }).wholesale_price_cents ?? undefined,
+            wholesale_min_qty: (v as { wholesale_min_qty?: number }).wholesale_min_qty ?? undefined,
           })),
         }
       : {
@@ -101,7 +103,7 @@ export function ProductForm({
           category_id: '',
           supplier_id: '',
           gender: '' as ProductInput['gender'],
-          variants: [{ color: '', size: '', price_cents: 0 }],
+          variants: [{ color: '', size: '', price_cents: 0, wholesale_min_qty: 6 }],
         },
   });
 
@@ -331,7 +333,7 @@ export function ProductForm({
           )}
           <div className="space-y-3">
             {fields.map((field, index) => (
-              <div key={field.id} className="grid grid-cols-2 gap-2 rounded-md border p-3 sm:grid-cols-6">
+              <div key={field.id} className="grid grid-cols-2 gap-2 rounded-md border p-3 sm:grid-cols-8">
                 <div className="space-y-1">
                   <Label className="text-xs">Cor</Label>
                   <Input {...register(`variants.${index}.color`)} />
@@ -345,7 +347,7 @@ export function ProductForm({
                   <Input {...register(`variants.${index}.sku`)} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Código de barras</Label>
+                  <Label className="text-xs">Cód. barras</Label>
                   <Input {...register(`variants.${index}.barcode`)} />
                 </div>
                 <div className="space-y-1">
@@ -359,16 +361,37 @@ export function ProductForm({
                     }
                   />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Venda (R$)</Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    defaultValue={centsToInput(field.price_cents)}
+                    onChange={(e) =>
+                      setValue(`variants.${index}.price_cents`, inputToCents(e.target.value))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Atacado (R$)</Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="—"
+                    defaultValue={centsToInput((field as { wholesale_price_cents?: number }).wholesale_price_cents)}
+                    onChange={(e) =>
+                      setValue(`variants.${index}.wholesale_price_cents`, inputToCents(e.target.value) || undefined)
+                    }
+                  />
+                </div>
                 <div className="flex items-end gap-1">
                   <div className="flex-1 space-y-1">
-                    <Label className="text-xs">Venda (R$)</Label>
+                    <Label className="text-xs">Mín. atac.</Label>
                     <Input
-                      type="text"
-                      inputMode="decimal"
-                      defaultValue={centsToInput(field.price_cents)}
-                      onChange={(e) =>
-                        setValue(`variants.${index}.price_cents`, inputToCents(e.target.value))
-                      }
+                      type="number"
+                      min={1}
+                      placeholder="6"
+                      {...register(`variants.${index}.wholesale_min_qty`, { valueAsNumber: true })}
                     />
                   </div>
                   <Button
