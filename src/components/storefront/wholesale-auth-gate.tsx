@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWholesaleAuthStore } from '@/lib/stores/wholesale-auth-store';
 import { AMAZONAS_CITIES } from '@/lib/shipping/amazonas';
 import {
-  Lock,
   KeyRound,
   UserCheck,
   ShieldCheck,
@@ -13,6 +12,11 @@ import {
   HelpCircle,
   LogOut,
   ArrowRight,
+  Sparkles,
+  Building2,
+  Loader2,
+  Check,
+  Copy,
 } from 'lucide-react';
 
 interface WholesaleAuthGateProps {
@@ -50,6 +54,29 @@ export function WholesaleAuthGate({
   const [regSalesChannel, setRegSalesChannel] = useState('Loja Física / Ponto Comercial');
   const [regBusinessTime, setRegBusinessTime] = useState('1 a 3 anos');
 
+  // Estado de Validação CNPJ em Tempo Real
+  const [isVerifyingCnpj, setIsVerifyingCnpj] = useState(false);
+  const [cnpjStatus, setCnpjStatus] = useState<{
+    checked: boolean;
+    isCnpj: boolean;
+    isReal: boolean;
+    isActive: boolean;
+    isFootwear: boolean;
+    companyName?: string;
+    city?: string;
+    cnaeDesc?: string;
+    error?: string;
+  } | null>(null);
+
+  // Estado de Sucesso com Auto-Aprovação e Senha Imediata
+  const [autoApprovalData, setAutoApprovalData] = useState<{
+    taxId: string;
+    tempPassword?: string;
+    companyName?: string;
+    cnaeDesc?: string;
+  } | null>(null);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+
   // Formulário de Troca de Senha
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -61,6 +88,74 @@ export function WholesaleAuthGate({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Função para checar CNPJ na Receita Federal
+  const checkCnpjOnline = useCallback(async (taxIdValue: string) => {
+    const clean = taxIdValue.replace(/\D/g, '');
+    if (clean.length === 14) {
+      setIsVerifyingCnpj(true);
+      try {
+        const res = await fetch('/api/wholesale', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verify_cnpj', slug, cnpj: clean }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setCnpjStatus({
+            checked: true,
+            isCnpj: true,
+            isReal: data.isReal,
+            isActive: data.isActive,
+            isFootwear: data.isFootwearBusiness,
+            companyName: data.companyName,
+            city: data.city,
+            cnaeDesc: data.matchedCnae?.desc,
+          });
+
+          // Preencher automaticamente Razão Social e Cidade se retornado
+          if (data.companyName && !regCompanyName) {
+            setRegCompanyName(data.companyName);
+          }
+          if (data.city && AMAZONAS_CITIES.some((c) => c.name.toLowerCase() === data.city.toLowerCase())) {
+            setRegCity(data.city);
+          }
+        } else {
+          setCnpjStatus({
+            checked: true,
+            isCnpj: true,
+            isReal: false,
+            isActive: false,
+            isFootwear: false,
+            error: data.error,
+          });
+        }
+      } catch {
+        setCnpjStatus(null);
+      } finally {
+        setIsVerifyingCnpj(false);
+      }
+    } else if (clean.length === 11) {
+      setCnpjStatus({
+        checked: true,
+        isCnpj: false,
+        isReal: true,
+        isActive: true,
+        isFootwear: false,
+      });
+    } else {
+      setCnpjStatus(null);
+    }
+  }, [slug, regCompanyName]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (regTaxId.replace(/\D/g, '').length >= 11) {
+        checkCnpjOnline(regTaxId);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [regTaxId, checkCnpjOnline]);
 
   if (!mounted) {
     return (
@@ -181,546 +276,681 @@ export function WholesaleAuthGate({
     );
   }
 
-  // 2. SE LOGADO COM SUCESSO: RENDERIZA O CATÁLOGO COM BARRA DE IDENTIFICAÇÃO DO LOJISTA
+  // 2. SE LOGADO E COM ACESSO COMPLETO
   if (isAuthenticated && customer) {
     return (
-      <>
-        {/* Barra Superior do Lojista Autenticado */}
-        <div className="bg-gray-950 text-white py-2 px-4 border-b border-gray-800">
-          <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-gray-400">Atacadista Conectado:</span>
-              <strong className="text-white font-black">{customer.company_name || customer.name}</strong>
-              <span className="text-gray-500">({customer.tax_id})</span>
+      <div className="space-y-6">
+        {/* Banner Superior do Lojista Autenticado */}
+        <div className="bg-gradient-to-r from-gray-950 via-gray-900 to-black text-white rounded-3xl p-4 sm:p-6 shadow-xl border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-400 border border-amber-400/30">
+              <ShieldCheck className="h-6 w-6" />
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-emerald-400 font-bold hidden md:inline">
-                ✓ Preços de Fábrica Liberados
-              </span>
-              <button
-                onClick={logout}
-                className="flex items-center gap-1 text-gray-400 hover:text-red-400 font-bold transition-colors"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Sair do Atacado
-              </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-amber-400/10 px-2.5 py-0.5 text-[10px] font-black uppercase text-amber-400 border border-amber-400/20">
+                  Lojista Atacadista Aprovado
+                </span>
+                <span className="text-xs text-gray-400">({customer.city || 'Manaus'})</span>
+              </div>
+              <h2 className="text-lg font-black text-white">
+                {customer.company_name || customer.name}
+              </h2>
             </div>
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="text-right hidden sm:block">
+              <p className="text-xs text-gray-400">Tabela de Preços</p>
+              <p className="text-sm font-black text-emerald-400">Atacado Exclusivo</p>
+            </div>
+            <button
+              onClick={() => logout()}
+              className="flex items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-red-500/20 hover:text-red-300 px-4 py-2.5 text-xs font-bold text-gray-300 transition-all border border-white/10"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sair do Atacado</span>
+            </button>
           </div>
         </div>
 
+        {/* Conteúdo Protegido (Grid de Atacado) */}
         {children}
-      </>
+      </div>
     );
   }
 
-  // 3. NÃO LOGADO: RENDERIZA O PORTAL FECHADO COM TABS (LOGIN, SOLICITAR CADASTRO, ESQUECI SENHA)
+  // 3. NÃO LOGADO: PORTAL DE ACESSO (LOGIN OU CADASTRO)
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
-      {/* Banner Superior Exclusivo B2B */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-gray-950 via-slate-900 to-red-950 text-white p-8 sm:p-12 shadow-2xl mb-10">
-        <div className="relative z-10 max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-red-600/30 backdrop-blur-md px-3.5 py-1 text-xs font-black uppercase tracking-wider text-red-200 border border-red-500/30">
-            <Lock className="h-3.5 w-3.5 text-red-400" />
-            Portal Atacado B2B — Acesso Restrito a Lojistas e Revendedores
+    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+      <div className="rounded-3xl border border-gray-200/80 bg-white p-6 sm:p-10 shadow-2xl space-y-6">
+        {/* Cabeçalho */}
+        <div className="text-center space-y-2">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-950 text-amber-400 shadow-inner">
+            <Sparkles className="h-7 w-7" />
           </div>
-
-          <h1 className="text-3xl sm:text-5xl font-black italic tracking-tighter text-white">
-            Preços de Fábrica & Margens de até 60% para Sua Loja
+          <span className="inline-block rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-900">
+            Portal B2B de Atacado & Revenda
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-950 tracking-tight">
+            Preços Exclusivos para Lojistas
           </h1>
-
-          <p className="text-sm sm:text-base text-gray-300 font-medium leading-relaxed">
-            O catálogo com valores de atacado e montador de grade é exclusivo para parceiros autorizados.
-            Forneça seu CPF/CNPJ e senha de acesso abaixo ou solicite seu cadastro comercial.
+          <p className="text-xs sm:text-sm text-gray-600 max-w-md mx-auto">
+            Acesse a tabela direta com margens de até 100% de lucro para revenda em todo o estado do Amazonas.
           </p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 text-xs font-bold">
-            <div className="rounded-xl bg-white/10 p-3 border border-white/10 backdrop-blur-xs">
-              📦 Estoque Central Único
-            </div>
-            <div className="rounded-xl bg-white/10 p-3 border border-white/10 backdrop-blur-xs">
-              🚀 Manaus R$ 1,00
-            </div>
-            <div className="rounded-xl bg-white/10 p-3 border border-white/10 backdrop-blur-xs">
-              🚢 Interior AM R$ 100
-            </div>
-            <div className="rounded-xl bg-white/10 p-3 border border-white/10 backdrop-blur-xs">
-              🛡️ 100% Originais c/ NF
-            </div>
-          </div>
         </div>
-      </div>
 
-      {/* Caixa Central de Autenticação / Cadastro */}
-      <div className="mx-auto max-w-2xl rounded-3xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-        {/* Abas de Navegação */}
-        <div className="flex border-b border-gray-200 bg-gray-50/80">
+        {/* Seletor de Abas */}
+        <div className="grid grid-cols-2 rounded-2xl bg-gray-100 p-1.5 text-xs font-bold">
           <button
-            type="button"
             onClick={() => {
               setTab('login');
               setErrorMsg(null);
               setSuccessMsg(null);
             }}
-            className={`flex-1 py-4 text-center text-xs font-black uppercase tracking-wider transition-all ${
+            className={`rounded-xl py-2.5 transition-all ${
               tab === 'login'
-                ? 'border-b-2 border-[#E31837] bg-white text-[#E31837]'
+                ? 'bg-white text-gray-950 shadow-sm'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            1. Já Sou Lojista (Entrar)
+            Já sou Cadastrado (Login)
           </button>
           <button
-            type="button"
             onClick={() => {
               setTab('register');
               setErrorMsg(null);
               setSuccessMsg(null);
             }}
-            className={`flex-1 py-4 text-center text-xs font-black uppercase tracking-wider transition-all ${
+            className={`rounded-xl py-2.5 transition-all ${
               tab === 'register'
-                ? 'border-b-2 border-[#E31837] bg-white text-[#E31837]'
+                ? 'bg-[#E31837] text-white shadow-sm font-black'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            2. Solicitar Acesso ao Atacado
+            Solicitar Acesso / CNPJ
           </button>
         </div>
 
-        <div className="p-6 sm:p-8">
-          {errorMsg && (
-            <div className="mb-6 rounded-xl bg-red-50 p-3.5 text-xs font-semibold text-red-700 flex items-center gap-2 border border-red-200">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
+        {/* Mensagens de Erro */}
+        {errorMsg && (
+          <div className="rounded-2xl bg-red-50 p-4 text-xs font-semibold text-red-700 flex items-center gap-2.5 border border-red-200">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
-          {successMsg && (
-            <div className="mb-6 rounded-xl bg-emerald-50 p-4 text-xs font-semibold text-emerald-800 flex items-start gap-2 border border-emerald-200">
-              <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-bold">{successMsg}</p>
-                <p className="text-[11px] text-emerald-700">
-                  Um alerta foi enviado ao PDV da loja. Assim que aprovado, você receberá a senha de acesso no WhatsApp.
-                </p>
+        {/* Modal de Sucesso com Senha Imediata (CNPJ Aprovado) */}
+        {autoApprovalData && (
+          <div className="rounded-3xl bg-gradient-to-br from-emerald-950 to-gray-950 text-white p-6 border-2 border-emerald-400 shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-gray-950 font-black">
+                <CheckCircle2 className="h-7 w-7" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-400/30">
+                  ⚡ Aprovação Automática Imediata
+                </span>
+                <h3 className="text-base font-black text-white">
+                  {autoApprovalData.companyName || 'CNPJ Verificado com Sucesso'}
+                </h3>
               </div>
             </div>
-          )}
 
-          {/* TAB 1: LOGIN */}
-          {tab === 'login' && (
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setErrorMsg(null);
-                setLoading(true);
+            <p className="text-xs text-gray-300">
+              Sua empresa foi validada na Receita Federal no ramo calçadista ({autoApprovalData.cnaeDesc || 'Comércio de Calçados'}) e seu acesso ao Atacado foi <strong>LIBERADO AGORA</strong>!
+            </p>
 
-                try {
-                  const res = await fetch('/api/wholesale', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      action: 'login',
-                      slug,
-                      taxId: loginTaxId,
-                      password: loginPassword,
-                    }),
-                  });
-                  const data = await res.json();
-                  if (!data.success) {
-                    setErrorMsg(data.error || 'Erro ao entrar no atacado.');
-                  } else {
-                    login(data.customer);
-                  }
-                } catch (err: unknown) {
-                  const message = err instanceof Error ? err.message : 'Erro de conexão.';
-                  setErrorMsg(message);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="space-y-4"
-            >
-              <div className="space-y-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">
-                  CPF ou CNPJ do Lojista
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={loginTaxId}
-                  onChange={(e) => setLoginTaxId(e.target.value)}
-                  placeholder="Digite apenas números ou formatado"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#E31837] focus:outline-none focus:ring-2 focus:ring-[#E31837]/20"
-                />
-              </div>
-
-              <div className="space-y-1">
+            {autoApprovalData.tempPassword && (
+              <div className="rounded-2xl bg-white/10 p-4 border border-white/20 space-y-1">
+                <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider block">
+                  Sua Senha Provisória de Acesso:
+                </span>
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">
-                    Senha de Acesso
-                  </label>
+                  <span className="text-xl font-mono font-black text-white tracking-widest">
+                    {autoApprovalData.tempPassword}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
-                      setTab('forgot_password');
-                      setErrorMsg(null);
-                      setSuccessMsg(null);
+                      if (autoApprovalData.tempPassword) {
+                        navigator.clipboard.writeText(autoApprovalData.tempPassword);
+                        setCopiedPassword(true);
+                        setTimeout(() => setCopiedPassword(false), 2000);
+                      }
                     }}
-                    className="text-xs text-[#E31837] font-bold hover:underline"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-xs font-bold text-white transition-all"
                   >
-                    Esqueci minha senha
+                    {copiedPassword ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copiedPassword ? 'Copiado!' : 'Copiar'}</span>
                   </button>
                 </div>
-                <input
-                  type="password"
-                  required
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="Digite sua senha de atacadista"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#E31837] focus:outline-none focus:ring-2 focus:ring-[#E31837]/20"
-                />
               </div>
+            )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#E31837] py-3.5 text-sm font-black text-white hover:bg-[#c4132d] transition-all shadow-md disabled:opacity-50 hover:-translate-y-0.5"
-              >
-                {loading ? 'Verificando Cadastro...' : 'Acessar Preços de Atacado'}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-
-              <div className="pt-4 text-center border-t border-gray-100">
-                <p className="text-xs text-gray-500">
-                  Ainda não tem cadastro aprovado?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTab('register');
-                      setErrorMsg(null);
-                      setSuccessMsg(null);
-                    }}
-                    className="font-bold text-[#E31837] hover:underline"
-                  >
-                    Solicitar acesso ao atacado aqui
-                  </button>
-                </p>
-              </div>
-            </form>
-          )}
-
-          {/* TAB 2: SOLICITAR ACESSO (FORMULÁRIO DE QUALIFICAÇÃO) */}
-          {tab === 'register' && (
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setErrorMsg(null);
-                setSuccessMsg(null);
-                setLoading(true);
-
-                try {
-                  const res = await fetch('/api/wholesale', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      action: 'apply',
-                      slug,
-                      name: regName,
-                      companyName: regCompanyName,
-                      taxId: regTaxId,
-                      phone: regPhone,
-                      email: regEmail,
-                      city: regCity,
-                      state: 'AM',
-                      monthlyVolume: regMonthlyVolume,
-                      salesChannel: regSalesChannel,
-                      businessTime: regBusinessTime,
-                    }),
-                  });
-                  const data = await res.json();
-                  if (!data.success) {
-                    setErrorMsg(data.error || 'Erro ao enviar solicitação.');
-                  } else {
-                    setSuccessMsg(data.message || 'Solicitação enviada com sucesso!');
-                    setTab('login');
-                  }
-                } catch (err: unknown) {
-                  const message = err instanceof Error ? err.message : 'Erro de conexão.';
-                  setErrorMsg(message);
-                } finally {
-                  setLoading(false);
-                }
+            <button
+              onClick={() => {
+                setLoginTaxId(autoApprovalData.taxId);
+                if (autoApprovalData.tempPassword) setLoginPassword(autoApprovalData.tempPassword);
+                setTab('login');
+                setAutoApprovalData(null);
               }}
-              className="space-y-4"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3.5 text-sm font-black text-gray-950 hover:bg-emerald-400 transition-all shadow-lg font-mono"
             >
-              <div className="rounded-2xl bg-blue-50/70 p-4 border border-blue-100 text-xs text-blue-900 space-y-1">
-                <p className="font-bold flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-blue-700" />
-                  Avaliação Comercial de Novo Comprador
-                </p>
-                <p className="text-blue-700">
-                  Preencha as informações abaixo. Nossa equipe avaliará seu perfil e enviará sua senha de acesso diretamente no seu WhatsApp.
-                </p>
-              </div>
+              <span>Entrar no Atacado Agora com Esta Senha</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    Nome do Responsável *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    placeholder="Ex: João da Silva"
-                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs focus:border-[#E31837] focus:outline-none"
-                  />
-                </div>
+        {/* Mensagens de Sucesso Normais */}
+        {successMsg && !autoApprovalData && (
+          <div className="rounded-2xl bg-emerald-50 p-4 text-xs font-semibold text-emerald-800 flex items-start gap-2.5 border border-emerald-200">
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold">{successMsg}</p>
+              <p className="text-[11px] text-emerald-700">
+                Sua solicitação foi registrada no PDV. Assim que aprovada, você receberá a senha de acesso no WhatsApp.
+              </p>
+            </div>
+          </div>
+        )}
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    Razão Social ou Nome Fantasia
-                  </label>
-                  <input
-                    type="text"
-                    value={regCompanyName}
-                    onChange={(e) => setRegCompanyName(e.target.value)}
-                    placeholder="Ex: Silva Calçados Eireli"
-                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs focus:border-[#E31837] focus:outline-none"
-                  />
-                </div>
-              </div>
+        {/* TAB 1: LOGIN */}
+        {tab === 'login' && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setErrorMsg(null);
+              setLoading(true);
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    CPF ou CNPJ *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={regTaxId}
-                    onChange={(e) => setRegTaxId(e.target.value)}
-                    placeholder="000.000.000-00 ou CNPJ"
-                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs focus:border-[#E31837] focus:outline-none"
-                  />
-                </div>
+              try {
+                const res = await fetch('/api/wholesale', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: 'login',
+                    slug,
+                    taxId: loginTaxId,
+                    password: loginPassword,
+                  }),
+                });
+                const data = await res.json();
+                if (!data.success) {
+                  setErrorMsg(data.error || 'Erro ao entrar no atacado.');
+                } else {
+                  login(data.customer);
+                }
+              } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Erro de conexão.';
+                setErrorMsg(message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">
+                CPF ou CNPJ do Lojista
+              </label>
+              <input
+                type="text"
+                required
+                value={loginTaxId}
+                onChange={(e) => setLoginTaxId(e.target.value)}
+                placeholder="Digite apenas números ou formatado"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#E31837] focus:outline-none focus:ring-2 focus:ring-[#E31837]/20"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    WhatsApp (DDD + Número) *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
-                    placeholder="(92) 98188-3786"
-                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs focus:border-[#E31837] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    E-mail
-                  </label>
-                  <input
-                    type="email"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="contato@empresa.com"
-                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs focus:border-[#E31837] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    Cidade / Município do Amazonas *
-                  </label>
-                  <select
-                    value={regCity}
-                    onChange={(e) => setRegCity(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs bg-white focus:border-[#E31837] focus:outline-none"
-                  >
-                    {AMAZONAS_CITIES.map((city) => (
-                      <option key={city.name} value={city.name}>
-                        {city.name} (AM)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Perguntas de Qualificação Comercial */}
-              <div className="space-y-3 border-t border-gray-100 pt-3">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    📊 Quantos pares de tênis você vende ou pretende vender por mês? *
-                  </label>
-                  <select
-                    value={regMonthlyVolume}
-                    onChange={(e) => setRegMonthlyVolume(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs bg-white focus:border-[#E31837] focus:outline-none"
-                  >
-                    <option value="10 a 30 pares/mês">10 a 30 pares/mês (Iniciante / Revenda)</option>
-                    <option value="30 a 60 pares/mês">30 a 60 pares/mês (Pequeno lojista)</option>
-                    <option value="60 a 100 pares/mês">60 a 100 pares/mês (Médio lojista)</option>
-                    <option value="Mais de 100 pares/mês">Mais de 100 pares/mês (Grande distribuidor / Rede)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    🏪 Qual é o seu principal canal de vendas? *
-                  </label>
-                  <select
-                    value={regSalesChannel}
-                    onChange={(e) => setRegSalesChannel(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs bg-white focus:border-[#E31837] focus:outline-none"
-                  >
-                    <option value="Loja Física / Ponto Comercial">Loja Física / Ponto Comercial</option>
-                    <option value="Loja Virtual / E-commerce">Loja Virtual / E-commerce próprio</option>
-                    <option value="Instagram / WhatsApp / Redes">Instagram / WhatsApp / Catálogo Online</option>
-                    <option value="Revendedor Autônomo / Porta a Porta">Revendedor Autônomo / Sacoleiro</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    ⏱️ Há quanto tempo atua no ramo de calçados? *
-                  </label>
-                  <select
-                    value={regBusinessTime}
-                    onChange={(e) => setRegBusinessTime(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs bg-white focus:border-[#E31837] focus:outline-none"
-                  >
-                    <option value="Iniciando agora">Iniciando agora</option>
-                    <option value="Menos de 1 ano">Menos de 1 ano</option>
-                    <option value="1 a 3 anos">1 a 3 anos</option>
-                    <option value="Mais de 3 anos">Mais de 3 anos no mercado</option>
-                  </select>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-950 py-3.5 text-sm font-black text-white hover:bg-gray-800 transition-all shadow-md disabled:opacity-50"
-              >
-                {loading ? 'Enviando Dados...' : 'Enviar Solicitação para Avaliação no PDV'}
-                <UserCheck className="h-4 w-4" />
-              </button>
-
-              <div className="pt-2 text-center">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">
+                  Senha de Acesso
+                </label>
                 <button
                   type="button"
-                  onClick={() => setTab('login')}
-                  className="text-xs text-gray-500 hover:text-gray-900 font-semibold"
+                  onClick={() => {
+                    setTab('forgot_password');
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="text-xs text-[#E31837] font-bold hover:underline"
                 >
-                  ← Voltar para o Login
+                  Esqueci minha senha
                 </button>
               </div>
-            </form>
-          )}
+              <input
+                type="password"
+                required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Digite sua senha de atacadista"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#E31837] focus:outline-none focus:ring-2 focus:ring-[#E31837]/20"
+              />
+            </div>
 
-          {/* TAB 3: ESQUECI MINHA SENHA */}
-          {tab === 'forgot_password' && (
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setErrorMsg(null);
-                setSuccessMsg(null);
-                setLoading(true);
-
-                try {
-                  const res = await fetch('/api/wholesale', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      action: 'forgot_password',
-                      slug,
-                      taxId: forgotTaxId,
-                      phone: forgotPhone,
-                    }),
-                  });
-                  const data = await res.json();
-                  if (!data.success) {
-                    setErrorMsg(data.error || 'Erro ao solicitar nova senha.');
-                  } else {
-                    setSuccessMsg(data.message || 'Solicitação enviada ao PDV com sucesso!');
-                    setTab('login');
-                  }
-                } catch (err: unknown) {
-                  const message = err instanceof Error ? err.message : 'Erro de conexão.';
-                  setErrorMsg(message);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="space-y-4"
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#E31837] py-3.5 text-sm font-black text-white hover:bg-[#c4132d] transition-all shadow-md disabled:opacity-50 hover:-translate-y-0.5"
             >
-              <div className="rounded-2xl bg-amber-50 p-4 border border-amber-200 text-xs text-amber-900 space-y-1">
-                <p className="font-bold flex items-center gap-1.5">
-                  <HelpCircle className="h-4 w-4 text-amber-700" />
-                  Recuperação de Senha de Atacadista
-                </p>
-                <p className="text-amber-800">
-                  Informe o seu CPF/CNPJ e seu WhatsApp cadastrado. Um alerta será enviado ao PDV da loja para geração de uma nova senha enviada diretamente no seu celular.
-                </p>
-              </div>
+              {loading ? 'Verificando Cadastro...' : 'Acessar Preços de Atacado'}
+              <ArrowRight className="h-4 w-4" />
+            </button>
 
+            <div className="pt-4 text-center border-t border-gray-100">
+              <p className="text-xs text-gray-500">
+                Ainda não tem cadastro aprovado?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('register');
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="font-bold text-[#E31837] hover:underline"
+                >
+                  Cadastre seu CNPJ com aprovação imediata aqui
+                </button>
+              </p>
+            </div>
+          </form>
+        )}
+
+        {/* TAB 2: SOLICITAR ACESSO (FORMULÁRIO INTELIGENTE CNPJ / CPF) */}
+        {tab === 'register' && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setErrorMsg(null);
+              setSuccessMsg(null);
+              setLoading(true);
+
+              try {
+                const res = await fetch('/api/wholesale', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: 'apply',
+                    slug,
+                    name: regName,
+                    companyName: regCompanyName,
+                    taxId: regTaxId,
+                    phone: regPhone,
+                    email: regEmail,
+                    city: regCity,
+                    state: 'AM',
+                    monthlyVolume: regMonthlyVolume,
+                    salesChannel: regSalesChannel,
+                    businessTime: regBusinessTime,
+                  }),
+                });
+                const data = await res.json();
+                if (!data.success) {
+                  setErrorMsg(data.error || 'Erro ao enviar solicitação.');
+                } else if (data.isAutoApproved) {
+                  setAutoApprovalData({
+                    taxId: regTaxId,
+                    tempPassword: data.tempPassword,
+                    companyName: regCompanyName,
+                    cnaeDesc: data.matchedCnae,
+                  });
+                } else {
+                  setSuccessMsg(data.message || 'Solicitação enviada com sucesso!');
+                  setTab('login');
+                }
+              } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Erro de conexão.';
+                setErrorMsg(message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            {/* Banner de Regras CNPJ vs CPF */}
+            <div className="rounded-2xl bg-amber-50/80 p-4 border border-amber-200 text-xs text-amber-950 space-y-1.5">
+              <div className="flex items-center gap-1.5 font-black text-amber-900">
+                <Building2 className="h-4 w-4 text-amber-700" />
+                <span>Cadastro B2B: CNPJ Calçadista vs Pessoa Física (CPF)</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                • <strong>CNPJ com CNAE de Calçados / Tênis / Artigos Esportivos:</strong> Validação automática na Receita Federal com liberação imediata da senha de acesso.<br />
+                • <strong>Pessoa Física (CPF / Autônomo):</strong> Envio para análise e aprovação comercial no PDV da loja.
+              </p>
+            </div>
+
+            {/* Campo CPF ou CNPJ com Verificação em Tempo Real */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">
+                  CPF ou CNPJ *
+                </label>
+                {isVerifyingCnpj && (
+                  <span className="flex items-center gap-1 text-[11px] text-amber-600 font-semibold">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Consultando Receita Federal...
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                required
+                value={regTaxId}
+                onChange={(e) => setRegTaxId(e.target.value)}
+                placeholder="Digite CNPJ da loja ou CPF de revendedor"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#E31837] focus:outline-none"
+              />
+
+              {/* Feedback de Validação do CNPJ */}
+              {cnpjStatus && cnpjStatus.isCnpj && (
+                <div className={`mt-2 rounded-2xl p-3.5 border text-xs space-y-1 ${
+                  cnpjStatus.isFootwear && cnpjStatus.isActive
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                    : cnpjStatus.isActive
+                    ? 'bg-blue-50 border-blue-300 text-blue-950'
+                    : 'bg-red-50 border-red-300 text-red-950'
+                }`}>
+                  <div className="flex items-center gap-1.5 font-bold">
+                    {cnpjStatus.isFootwear && cnpjStatus.isActive ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <span className="text-emerald-800">⚡ CNPJ Ativo e Elegível para Aprovação Automática!</span>
+                      </>
+                    ) : cnpjStatus.isActive ? (
+                      <>
+                        <ShieldCheck className="h-4 w-4 text-blue-600" />
+                        <span className="text-blue-800">CNPJ Ativo na Receita Federal (Análise Rápida no PDV)</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <span className="text-red-800">Situação Cadastral Inativa ou CNPJ Inválido</span>
+                      </>
+                    )}
+                  </div>
+                  {cnpjStatus.companyName && (
+                    <p className="text-[11px] text-gray-700">
+                      <strong>Razão Social:</strong> {cnpjStatus.companyName}
+                    </p>
+                  )}
+                  {cnpjStatus.cnaeDesc && (
+                    <p className="text-[11px] text-emerald-700 font-semibold">
+                      <strong>Ramo Detectado:</strong> {cnpjStatus.cnaeDesc}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {cnpjStatus && !cnpjStatus.isCnpj && (
+                <p className="text-[11px] text-blue-700 mt-1 font-medium flex items-center gap-1">
+                  <UserCheck className="h-3.5 w-3.5" />
+                  Pessoa Física (CPF): Seu cadastro será avaliado pelo dono no PDV da loja física.
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                  CPF ou CNPJ Cadastrado
+                  Nome do Responsável *
                 </label>
                 <input
                   type="text"
                   required
-                  value={forgotTaxId}
-                  onChange={(e) => setForgotTaxId(e.target.value)}
-                  placeholder="Digite seu CPF ou CNPJ"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#E31837] focus:outline-none"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  placeholder="Ex: João da Silva"
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs focus:border-[#E31837] focus:outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
-                  WhatsApp para Recebimento da Senha
+                  Razão Social ou Nome Fantasia
+                </label>
+                <input
+                  type="text"
+                  value={regCompanyName}
+                  onChange={(e) => setRegCompanyName(e.target.value)}
+                  placeholder="Ex: Silva Calçados Eireli"
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs focus:border-[#E31837] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                  WhatsApp do Lojista (DDD + Número) *
                 </label>
                 <input
                   type="tel"
                   required
-                  value={forgotPhone}
-                  onChange={(e) => setForgotPhone(e.target.value)}
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
                   placeholder="(92) 98188-3786"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#E31837] focus:outline-none"
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs focus:border-[#E31837] focus:outline-none"
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#E31837] py-3.5 text-sm font-black text-white hover:bg-[#c4132d] transition-all shadow-md disabled:opacity-50"
-              >
-                {loading ? 'Enviando Alerta ao PDV...' : 'Solicitar Nova Senha ao PDV'}
-              </button>
-
-              <div className="pt-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => setTab('login')}
-                  className="text-xs text-gray-500 hover:text-gray-900 font-semibold"
-                >
-                  ← Voltar para a tela de Login
-                </button>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                  E-mail Comercial *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  placeholder="contato@lojatenis.com"
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs focus:border-[#E31837] focus:outline-none"
+                />
               </div>
-            </form>
-          )}
-        </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                Cidade / Município do Amazonas *
+              </label>
+              <select
+                value={regCity}
+                onChange={(e) => setRegCity(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs bg-white focus:border-[#E31837] focus:outline-none"
+              >
+                {AMAZONAS_CITIES.map((city) => (
+                  <option key={city.name} value={city.name}>
+                    {city.name} (AM)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Perguntas de Qualificação Comercial */}
+            <div className="space-y-3 border-t border-gray-100 pt-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                  📊 Quantos pares de tênis você vende ou pretende vender por mês? *
+                </label>
+                <select
+                  value={regMonthlyVolume}
+                  onChange={(e) => setRegMonthlyVolume(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs bg-white focus:border-[#E31837] focus:outline-none"
+                >
+                  <option value="10 a 30 pares/mês">10 a 30 pares/mês (Iniciante / Revenda)</option>
+                  <option value="30 a 60 pares/mês">30 a 60 pares/mês (Pequeno lojista)</option>
+                  <option value="60 a 100 pares/mês">60 a 100 pares/mês (Médio lojista)</option>
+                  <option value="Mais de 100 pares/mês">Mais de 100 pares/mês (Grande distribuidor / Rede)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                  🏪 Qual é o seu principal canal de vendas? *
+                </label>
+                <select
+                  value={regSalesChannel}
+                  onChange={(e) => setRegSalesChannel(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs bg-white focus:border-[#E31837] focus:outline-none"
+                >
+                  <option value="Loja Física / Ponto Comercial">Loja Física / Ponto Comercial</option>
+                  <option value="Loja Virtual / E-commerce">Loja Virtual / E-commerce próprio</option>
+                  <option value="Instagram / WhatsApp / Redes">Instagram / WhatsApp / Catálogo Online</option>
+                  <option value="Revendedor Autônomo / Porta a Porta">Revendedor Autônomo / Sacoleiro</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                  ⏱️ Há quanto tempo atua no ramo de calçados? *
+                </label>
+                <select
+                  value={regBusinessTime}
+                  onChange={(e) => setRegBusinessTime(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs bg-white focus:border-[#E31837] focus:outline-none"
+                >
+                  <option value="Iniciando agora">Iniciando agora</option>
+                  <option value="Menos de 1 ano">Menos de 1 ano</option>
+                  <option value="1 a 3 anos">1 a 3 anos</option>
+                  <option value="Mais de 3 anos">Mais de 3 anos no mercado</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-black text-white transition-all shadow-md disabled:opacity-50 ${
+                cnpjStatus?.isFootwear && cnpjStatus.isActive
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : 'bg-gray-950 hover:bg-gray-800'
+              }`}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Processando Cadastro...</span>
+                </>
+              ) : cnpjStatus?.isFootwear && cnpjStatus.isActive ? (
+                <>
+                  <Sparkles className="h-4 w-4 text-amber-300" />
+                  <span>Validar CNPJ & Liberar Atacado Automaticamente</span>
+                </>
+              ) : (
+                <>
+                  <UserCheck className="h-4 w-4" />
+                  <span>Enviar Solicitação de Atacado</span>
+                </>
+              )}
+            </button>
+
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => setTab('login')}
+                className="text-xs text-gray-500 hover:text-gray-900 font-semibold"
+              >
+                ← Voltar para o Login
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* TAB 3: ESQUECI MINHA SENHA */}
+        {tab === 'forgot_password' && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setErrorMsg(null);
+              setSuccessMsg(null);
+              setLoading(true);
+
+              try {
+                const res = await fetch('/api/wholesale', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: 'forgot_password',
+                    slug,
+                    taxId: forgotTaxId,
+                    phone: forgotPhone,
+                  }),
+                });
+                const data = await res.json();
+                if (!data.success) {
+                  setErrorMsg(data.error || 'Erro ao solicitar nova senha.');
+                } else {
+                  setSuccessMsg(data.message || 'Solicitação enviada ao PDV com sucesso!');
+                  setTab('login');
+                }
+              } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Erro de conexão.';
+                setErrorMsg(message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="rounded-2xl bg-amber-50 p-4 border border-amber-200 text-xs text-amber-900 space-y-1">
+              <p className="font-bold flex items-center gap-1.5">
+                <HelpCircle className="h-4 w-4 text-amber-700" />
+                Recuperação de Senha de Atacadista
+              </p>
+              <p className="text-amber-800">
+                Informe o seu CPF/CNPJ e seu WhatsApp cadastrado. Um alerta será enviado ao PDV da loja para geração de uma nova senha enviada diretamente no seu celular.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                CPF ou CNPJ Cadastrado
+              </label>
+              <input
+                type="text"
+                required
+                value={forgotTaxId}
+                onChange={(e) => setForgotTaxId(e.target.value)}
+                placeholder="Digite seu CPF ou CNPJ"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#E31837] focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                WhatsApp para Recebimento da Senha
+              </label>
+              <input
+                type="tel"
+                required
+                value={forgotPhone}
+                onChange={(e) => setForgotPhone(e.target.value)}
+                placeholder="(92) 98188-3786"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#E31837] focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 py-3.5 text-sm font-black text-gray-950 hover:bg-amber-400 transition-all shadow-md disabled:opacity-50"
+            >
+              {loading ? 'Enviando...' : 'Solicitar Nova Senha no PDV'}
+            </button>
+
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => setTab('login')}
+                className="text-xs text-gray-500 hover:text-gray-900 font-semibold"
+              >
+                ← Voltar para o Login
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

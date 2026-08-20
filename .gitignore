@@ -39,3 +39,5 @@ next-env.d.ts
 # backups & temp
 /backups/
 /supabase/.temp/
+
+.vercel

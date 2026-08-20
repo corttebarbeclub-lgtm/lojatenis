@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
+import { verifyCnpjWithReceita } from '@/lib/services/cnpj-validator';
+
+// Gerador de senha amigável temporária
+function generateFriendlyPassword() {
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  const prefixes = ['ATACADO', 'TENIS', 'MODA', 'CALCADOS', 'B2B'];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  return `${prefix}-${randomNum}`;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +21,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Slug da loja não informado' }, { status: 400 });
     }
 
-    // 1. LOGIN DE ATACADISTA
+    // 1. VERIFICAÇÃO EM TEMPO REAL DE CNPJ NA RECEITA FEDERAL (CNAE DE CALÇADOS)
+    if (action === 'verify_cnpj') {
+      const { cnpj } = body;
+      if (!cnpj) {
+        return NextResponse.json({ success: false, error: 'CNPJ não informado' }, { status: 400 });
+      }
+
+      const cnpjResult = await verifyCnpjWithReceita(cnpj);
+      return NextResponse.json({
+        success: true,
+        ...cnpjResult,
+      });
+    }
+
+    // 2. LOGIN DE ATACADISTA
     if (action === 'login') {
       const { taxId, password } = body;
       if (!taxId || !password) {
@@ -32,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data);
     }
 
-    // 2. SOLICITAR CADASTRO DE NOVO ATACADISTA
+    // 3. SOLICITAR CADASTRO DE NOVO ATACADISTA (AUTO-APROVAÇÃO SE CNPJ DE CALÇADOS)
     if (action === 'apply') {
       const {
         name,
@@ -51,28 +74,61 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Nome, CPF/CNPJ e WhatsApp são obrigatórios' }, { status: 400 });
       }
 
-      const { data, error } = await supabase.rpc('submit_wholesale_application', {
+      const cleanTaxId = String(taxId).replace(/\D/g, '');
+      const isCnpj = cleanTaxId.length === 14;
+
+      let isAutoApproved = false;
+      let matchedCnaeCode: string | null = null;
+      let matchedCnaeDesc: string | null = null;
+      let tempPassword: string | null = null;
+      let verifiedCompanyName = companyName;
+      let verifiedCity = city;
+
+      // Se for CNPJ, checar na Receita Federal
+      if (isCnpj) {
+        const cnpjCheck = await verifyCnpjWithReceita(cleanTaxId);
+        if (cnpjCheck.isReal && cnpjCheck.isActive && cnpjCheck.isFootwearBusiness) {
+          isAutoApproved = true;
+          matchedCnaeCode = cnpjCheck.matchedCnae?.code || null;
+          matchedCnaeDesc = cnpjCheck.matchedCnae?.desc || null;
+          tempPassword = generateFriendlyPassword();
+          verifiedCompanyName = cnpjCheck.companyName || companyName;
+          verifiedCity = cnpjCheck.city || city;
+        }
+      }
+
+      // Submeter via RPC v2
+      const { data, error } = await supabase.rpc('submit_wholesale_application_v2', {
         p_slug: slug,
         p_name: name,
-        p_company_name: companyName || null,
+        p_company_name: verifiedCompanyName || null,
         p_tax_id: taxId,
         p_phone: phone,
         p_email: email || null,
-        p_city: city || 'Manaus',
+        p_city: verifiedCity || 'Manaus',
         p_state: state || 'AM',
         p_monthly_volume: monthlyVolume || null,
         p_sales_channel: salesChannel || null,
         p_business_time: businessTime || null,
+        p_is_auto_approved: isAutoApproved,
+        p_cnae_code: matchedCnaeCode,
+        p_cnae_description: matchedCnaeDesc,
+        p_temp_password: tempPassword,
       });
 
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
       }
 
-      return NextResponse.json(data);
+      return NextResponse.json({
+        ...data,
+        isAutoApproved,
+        tempPassword,
+        matchedCnae: matchedCnaeDesc,
+      });
     }
 
-    // 3. TROCA DE SENHA (PRIMEIRO ACESSO OU MANUAL)
+    // 4. TROCA DE SENHA (PRIMEIRO ACESSO OU MANUAL)
     if (action === 'change_password') {
       const { customerId, newPassword } = body;
       if (!customerId || !newPassword) {
@@ -92,7 +148,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data);
     }
 
-    // 4. ESQUECI MINHA SENHA
+    // 5. ESQUECI MINHA SENHA
     if (action === 'forgot_password') {
       const { taxId, phone } = body;
       if (!taxId || !phone) {
